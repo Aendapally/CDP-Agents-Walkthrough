@@ -187,7 +187,6 @@ dialog.viewer::backdrop{background:rgba(10,14,12,.55)}
     <div class="tools">
       <button class="btn" id="samplesBtn" title="Open the sample artifacts">Sample artifacts</button>
       <button class="btn" id="follow" aria-pressed="true" title="Zoom the diagram to each step">Zoom to step</button>
-      <button class="btn" id="statusBtn" aria-pressed="false" title="Show what ships today">Build status</button>
       <button class="btn" id="play" aria-pressed="false">▶ Auto-play</button>
       <button class="btn" id="fsBtn" title="Full screen (F)" hidden>Full screen</button>
     </div>
@@ -201,11 +200,6 @@ dialog.viewer::backdrop{background:rgba(10,14,12,.55)}
         </defs>
         <g id="layer-zones"></g><g id="layer-edges"></g><g id="layer-nodes"></g><g id="layer-badges"></g>
       </svg>
-      <div class="legend" id="legend" hidden>
-        <span><i class="s-ok"></i>Shipping today</span>
-        <span><i class="s-wip"></i>In progress</span>
-        <span><i class="s-plan"></i>Planned</span>
-      </div>
     </div>
     <aside class="panel" id="panel" aria-live="polite"></aside>
   </main>
@@ -299,13 +293,8 @@ const NODES = [
   {id:'p-logs',  kind:'data', x:1250,y:1035,w:117,h:52, t:'Deployment Logs'},
 ];
 
-// build status per node (from README)
-const STATUS = {chatbot:'plan', parser:'ok', reqjson:'ok', scoring:'plan',
-  'sp-cap':'plan','sp-svc':'plan','sp-cfg':'plan','sp-pol':'plan','sp-sec':'plan','sp-net':'plan','sp-cost':'plan','sp-rel':'plan',
-  designer:'ok', yamlgen:'ok', gateway:'ok', cspmcp:'ok', orgmcp:'plan',
-  'a-req':'ok','a-sum':'ok','a-yaml':'ok','a-diag':'ok', dfe:'ok', diaggen:'ok', review:'plan',
-  ticket:'plan', feedback:'plan', approval:'plan', committee:'plan', exception:'plan', learn:'plan', roadmap:'plan',
-  automation:'plan', platmcp:'plan'};
+const BUILD_STATUS = null;
+const STATUS = BUILD_STATUS ? BUILD_STATUS.nodes : {};
 
 const EDGES = [
   {id:'e1',   n:'1',   p:[[260,100],[200,100]]},
@@ -359,71 +348,68 @@ const STEPS = [
    body:['CDP-Agents moves architecture decisions to design time. It reads an application, works out the non-functional requirements with the team, designs the architecture with a panel of specialist agents, and carries it through review, governance and provisioning.',
          'Every requirement and design decision is stored as a versioned schema document, so each choice can be traced back to the requirement, policy or paved path behind it.'],
    nodes:[], edges:[]},
-  {n:'1', area:'CDP ChatBot', title:'Read the application', status:'plan',
+  {n:'1', area:'CDP ChatBot', title:'Read the application',
    body:['The Cloud Developer Platform agent reads the application repository: source code, the manifest of non-functional requirements, and any existing infrastructure-as-code.',
          'From it the agent detects infrastructure signals (frameworks, data stores, external integrations, traffic and state patterns) and builds dependency maps.'],
    out:['Infrastructure signals','Dependency map'], nodes:['chatbot','repo'], edges:['e1']},
-  {n:'2 · 2.1', area:'CDP ChatBot → Requirements Analyzer', title:'Confirm requirements with the team', status:'wip',
+  {n:'2 · 2.1', area:'CDP ChatBot → Requirements Analyzer', title:'Confirm requirements with the team',
    body:['The ChatBot drafts candidate non-functional requirements and calls the Requirements Analyzer.',
          'Whenever something is ambiguous it goes back to the app developer with targeted clarifying questions instead of guessing.'],
    out:['Candidate NFRs'], nodes:['chatbot','dev','z-req','parser'], edges:['e2','e21']},
-  {n:'3–5', area:'Requirements Analyzer', title:'Score until the requirements are complete', status:'wip',
+  {n:'3–5', area:'Requirements Analyzer', title:'Score until the requirements are complete',
    body:['The Requirement Parser uses an LLM to analyse and reason over the requirements, then creates and updates a structured Req JSON representation.',
          'Req Scoring checks the document after every pass. The loop runs until the requirements reach the completeness threshold.'],
-   note:'Requirements gathering ships today; the scoring loop is planned.',
    out:[{t:'Req JSON (scored)',a:'req'}], nodes:['z-req','parser','reqjson','scoring',...LLM], edges:['e3','e4','e5','e5b']},
-  {n:'6', area:'A2A hand-off', title:'Hand off to the architecture team', status:'plan',
+  {n:'6', area:'A2A hand-off', title:'Hand off to the architecture team',
    body:['Once the threshold is met, the Req JSON is versioned in the artifact repository and passed to the Architecture Lead through an agent-to-agent (A2A) call.'],
    out:[{t:'Req JSON in artifact repo',a:'req'}], nodes:['z-req','reqjson','z-lead','z-art','a-req'], edges:['e6','e6b']},
-  {n:'7', area:'Architecture Lead Orchestrator', title:'Design by debate', status:'plan',
+  {n:'7', area:'Architecture Lead Orchestrator', title:'Design by debate',
    body:['The Architecture Lead runs a propose → critique → reconcile → re-propose loop over a panel of cloud specialist agents.',
          'Each specialist owns one concern: capability mapping, service selection, configuration & sizing, policy & standards, security & compliance, networking, cost & FinOps, and reliability.'],
    nodes:['z-lead',...SPEC], edges:[]},
-  {n:'8–9', area:'MCP Gateway', title:'Ground every choice in provider docs', status:'ok',
+  {n:'8–9', area:'MCP Gateway', title:'Ground every choice in provider docs',
    body:['Specialists reason with the LLM and read the cloud provider’s documentation and best practices through the MCP Gateway, so services are used the way the provider intends.'],
-   note:'Shipping today with the AWS Documentation MCP server.',
    nodes:['z-lead',...SPEC,...LLM,'z-mcp','gateway','cspmcp'], edges:['e8','e9','egw1']},
-  {n:'9.1', area:'Org Standards & Policy MCP', title:'Check against organization policy', status:'plan',
+  {n:'9.1', area:'Org Standards & Policy MCP', title:'Check against organization policy',
    body:['Before committing to a resource, region or external dependency, specialists ask the organization’s standards and policy MCP server.',
          'Is this resource approved? Is this demographic or external access allowed? Is there a paved-path module in the IaC registry?'],
    nodes:[...SPEC,'z-mcp','gateway','orgmcp',...ORG], edges:['e91','egw2','eorg']},
-  {n:'10 · 10.1', area:'Architecture Designer', title:'Converge on one design', status:'ok',
+  {n:'10 · 10.1', area:'Architecture Designer', title:'Converge on one design',
    body:['The reconciled proposals flow into the Architecture Designer.',
          'Where organization policy leaves a decision open, the designer reaches back through the ChatBot to the developer for clarification.'],
    nodes:['z-lead',...SPEC,'designer','chatbot','dev'], edges:['e10','e101','e21']},
-  {n:'11–12', area:'Architecture Designer', title:'Apply standards and write the summary', status:'wip',
+  {n:'11–12', area:'Architecture Designer', title:'Apply standards and write the summary',
    body:['The designer pulls policies and standards from the org MCP server, then writes the Architecture Summary to the artifact repository.',
          'Each decision in the summary traces back to the requirement, policy or paved path behind it.'],
-   note:'The designer and summary ship today; the org policy MCP server is planned.',
    out:[{t:'Architecture Summary',a:'sum'}], nodes:['z-lead','designer','z-mcp','orgmcp','z-art','a-sum'], edges:['e11','e12']},
-  {n:'13–16', area:'Architecture YAML Generator', title:'Generate architecture-as-code', status:'ok',
+  {n:'13–16', area:'Architecture YAML Generator', title:'Generate architecture-as-code',
    body:['The YAML Generator gives the LLM the Architecture Summary plus example datasets and asks it to generate diagrams-as-code YAML.',
          'The YAML is validated against the diagrams schema so the Diagrammer can consume it, then versioned in the artifact repository.'],
    out:[{t:'Architecture as Code (YAML)',a:'yaml'}], nodes:['z-lead','designer','yamlgen',...LLM,'z-art','a-yaml'], edges:['e13','e14','e16']},
-  {n:'17–18', area:'Diagrammer Agent', title:'Draw the diagram', status:'ok',
+  {n:'17–18', area:'Diagrammer Agent', title:'Draw the diagram',
    body:['The Data Flow Extractor reads the YAML and the Diagram Generator renders the architecture diagram.',
          'The rendered diagram is versioned next to the other artifacts.'],
    out:[{t:'Architecture Diagram (PNG)',a:'diag'}], nodes:['z-art','a-yaml','a-diag','z-diag','dfe','diaggen'], edges:['e17','edfe','e18']},
-  {n:'19–20', area:'Reviewer Agent', title:'Review against policy', status:'plan',
+  {n:'19–20', area:'Reviewer Agent', title:'Review against policy',
    body:['The Reviewer Agent takes all four artifacts and checks the final architecture against the organization’s policies and approved patterns.',
          'Violations are flagged before a person ever looks at the design.'],
    nodes:[...ARTS,'z-rev','review',...ORG], edges:['e19','e20']},
-  {n:'21–22', area:'Cloud Center of Excellence', title:'Raise it for governance', status:'plan',
+  {n:'21–22', area:'Cloud Center of Excellence', title:'Raise it for governance',
    body:['The review results and artifacts are attached to a ticket in the enterprise ticketing tool.',
          'CCoE review can happen asynchronously, and the committee only needs to discuss the exceptions being requested.'],
    nodes:[...ARTS,'z-rev','review','z-ccoe','ticket'], edges:['e21b','e22']},
-  {n:'23', area:'Cloud Center of Excellence', title:'CCoE decides', status:'plan',
+  {n:'23', area:'Cloud Center of Excellence', title:'CCoE decides',
    body:['The CCoE either sends feedback and rejects the design, or the committee reviews it, grants and logs any justified exceptions, and approves.'],
    nodes:['z-ccoe','ticket','feedback','committee','exception','approval'], edges:['etk','e23a','e23b','e23c']},
-  {n:'Learn', area:'Governance-as-a-learning loop', title:'Every decision makes the next design better', status:'plan',
+  {n:'Learn', area:'Governance-as-a-learning loop', title:'Every decision makes the next design better',
    body:['Committee outcomes update the agents’ prompts and guardrails.',
          'Observed patterns (Terraform modules, features and architecture patterns that are needed but not yet available) feed the platform engineering backlog and roadmap.'],
    nodes:['z-ccoe','committee','exception','learn','roadmap',...ORG], edges:['e23b','elrn','erd']},
-  {n:'24–25', area:'Platform Automation Agent', title:'Approval triggers provisioning', status:'plan',
+  {n:'24–25', area:'Platform Automation Agent', title:'Approval triggers provisioning',
    body:['Approval fires an event to the Public Cloud Platform Automation Agent.',
          'The agent reads the approved artifacts from the artifact repository, the same versions that were reviewed.'],
    nodes:['z-ccoe','approval','automation',...ARTS], edges:['e24','e25']},
-  {n:'26', area:'Platform Engineering MCP Server', title:'Provision through the platform', status:'plan',
+  {n:'26', area:'Platform Engineering MCP Server', title:'Provision through the platform',
    body:['The automation agent calls the Platform Engineering MCP server. It exposes the platform’s APIs for orchestration workflows, the IaC registry, the image and code artifactory, deployment status and notifications, and deployment logs.'],
    nodes:['automation','platmcp','z-plat','p-api','p-orch','p-iac','p-art','p-stat','p-logs'], edges:['e26','e27']},
 ];
@@ -504,7 +490,7 @@ document.getElementById('vClose').addEventListener('click',()=>viewer.close());
 viewer.addEventListener('click',e=>{ if (e.target===viewer) viewer.close(); });
 document.getElementById('samplesBtn').addEventListener('click',()=>openSample(ART_OF[STEPS[cur].nodes.find(id=>ART_OF[id])] || 'req'));
 
-const STATUS_TEXT = {ok:'Shipping today', wip:'In progress', plan:'Planned'};
+const STATUS_TEXT = BUILD_STATUS ? BUILD_STATUS.labels : {};
 const NS = 'http://www.w3.org/2000/svg';
 const svg = document.getElementById('dia');
 const byId = {};
@@ -619,7 +605,8 @@ function renderPanel(s, i){
     parts.push(`<div class="meta"><h3>Stages</h3><div class="chips">${STEPS.slice(1).map((t,k)=>`<button class="chip" data-go="${k+1}">${esc(t.title)}</button>`).join('')}</div></div>`);
   } else {
     const meta = [];
-    if (s.status) meta.push(`<span class="status"><i class="s-${s.status}"></i>${STATUS_TEXT[s.status]}</span>${s.note?`<span class="note">${esc(s.note)}</span>`:''}`);
+    const st = BUILD_STATUS && BUILD_STATUS.steps[i];
+    if (st) meta.push(`<span class="status"><i class="s-${st.status}"></i>${STATUS_TEXT[st.status]}</span>${st.note?`<span class="note">${esc(st.note)}</span>`:''}`);
     if (s.out) meta.push(`<h3>Produces</h3><div class="chips">${s.out.map(o=>typeof o==='string' ? `<span class="chip">${esc(o)}</span>` : `<button class="chip art" data-art="${o.a}" title="Open the sample">${esc(o.t)} ›</button>`).join('')}</div>`);
     const arts = [...new Set(s.nodes.map(id=>ART_OF[id]).filter(Boolean))];
     if (arts.length) parts.push(`<button class="open-sample" data-art="${arts[arts.length-1]}">Open sample ${esc(ARTIFACTS[arts[arts.length-1]].tab)} ›</button>`);
@@ -684,7 +671,7 @@ document.addEventListener('fullscreenchange',()=>{ fsBtn.textContent = document.
 const followBtn = document.getElementById('follow');
 followBtn.addEventListener('click',()=>{ follow=!follow; followBtn.setAttribute('aria-pressed',follow); animateTo(boxFor(STEPS[cur])); });
 const statusBtn = document.getElementById('statusBtn');
-statusBtn.addEventListener('click',()=>{ const on = svg.classList.toggle('show-status'); statusBtn.setAttribute('aria-pressed',on); document.getElementById('legend').hidden = !on; });
+if (statusBtn) statusBtn.addEventListener('click',()=>{ const on = svg.classList.toggle('show-status'); statusBtn.setAttribute('aria-pressed',on); document.getElementById('legend').hidden = !on; });
 const playBtn = document.getElementById('play');
 function stopPlay(){ clearInterval(playTimer); playTimer=null; playBtn.setAttribute('aria-pressed','false'); playBtn.textContent='▶ Auto-play'; }
 playBtn.addEventListener('click',()=>{
