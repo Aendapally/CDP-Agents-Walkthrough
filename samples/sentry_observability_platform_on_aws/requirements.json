@@ -1,0 +1,366 @@
+{
+  "$schema": "cdp/requirements/v0",
+  "document": {
+    "id": "REQ-SENTRY-001",
+    "title": "Self-hosted Sentry at enterprise scale",
+    "version": "1.0",
+    "status": "ready-for-design",
+    "created": "2026-10-08",
+    "produced_by": "Reference sample written in the Requirements Analyzer format (see ../README.md)"
+  },
+  "application": {
+    "name": "Sentry (self-hosted)",
+    "repository": "https://github.com/getsentry/self-hosted",
+    "commit": "d09ff0cd592f",
+    "license": "FSL-1.1-Apache-2.0",
+    "summary": "Application monitoring: error tracking, tracing and performance, session replay, profiling, cron and uptime monitoring. The self-hosted package runs the full Sentry stack with Docker Compose and describes itself as 'packaged up for low-volume deployments and proofs-of-concept'.",
+    "components": [
+      {
+        "name": "Relay",
+        "repository": "getsentry/relay",
+        "language": "Rust",
+        "role": "Ingest edge: authenticates SDK traffic, applies quotas and rate limits, scrubs PII, writes to Kafka"
+      },
+      {
+        "name": "Sentry",
+        "repository": "getsentry/sentry",
+        "language": "Python (Django)",
+        "role": "Web UI and API, ingest consumers, post-processing, alerting, task workers"
+      },
+      {
+        "name": "Snuba",
+        "repository": "getsentry/snuba",
+        "language": "Python / Rust",
+        "role": "Query service and Kafka consumers in front of ClickHouse"
+      },
+      {
+        "name": "Symbolicator",
+        "repository": "getsentry/symbolicator",
+        "language": "Rust",
+        "role": "Native and JavaScript symbolication using uploaded debug files"
+      },
+      {
+        "name": "Vroom",
+        "repository": "getsentry/vroom",
+        "language": "Go",
+        "role": "Profiling storage and queries"
+      },
+      {
+        "name": "Taskbroker",
+        "repository": "getsentry/taskbroker",
+        "language": "Rust",
+        "role": "Kafka-backed task queue feeding task workers"
+      },
+      {
+        "name": "Uptime checker",
+        "repository": "getsentry/uptime-checker",
+        "language": "Rust",
+        "role": "Synthetic uptime checks"
+      }
+    ],
+    "detected_signals": [
+      {
+        "id": "SIG-01",
+        "signal": "53 services in the Compose topology",
+        "evidence": "docker-compose.yml: services",
+        "implies": "Container orchestration with per-service scaling"
+      },
+      {
+        "id": "SIG-02",
+        "signal": "Kafka is the ingest buffer and event stream, with a 50 MB maximum message size",
+        "evidence": "sentry/sentry.conf.example.py: DEFAULT_KAFKA_OPTIONS message.max.bytes 50000000; SENTRY_EVENTSTREAM KafkaEventStream",
+        "implies": "Durable, replicated Kafka; broker limits must accept large messages"
+      },
+      {
+        "id": "SIG-03",
+        "signal": "ClickHouse fed by 18 Snuba consumers",
+        "evidence": "docker-compose.yml: clickhouse, snuba-*-consumer, snuba-replacer, snuba-subscription-consumer-*",
+        "implies": "Analytical store sized for write-heavy, append-only ingest"
+      },
+      {
+        "id": "SIG-04",
+        "signal": "PostgreSQL behind PgBouncer for metadata",
+        "evidence": "docker-compose.yml: postgres, pgbouncer",
+        "implies": "Managed PostgreSQL with connection pooling"
+      },
+      {
+        "id": "SIG-05",
+        "signal": "Raw event payloads (nodestore) on S3-compatible storage",
+        "evidence": "sentry/sentry.conf.example.py: SENTRY_NODESTORE sentry_nodestore_s3.S3PassthroughDjangoNodeStorage (SeaweedFS)",
+        "implies": "Amazon S3 with lifecycle expiry matching retention"
+      },
+      {
+        "id": "SIG-06",
+        "signal": "Files and profiles stored on a filesystem or S3",
+        "evidence": "sentry/config.example.yml: filestore.backend filesystem; filestore.profiles-backend s3",
+        "implies": "Shared object storage instead of local disks so services can scale out"
+      },
+      {
+        "id": "SIG-07",
+        "signal": "Redis for cache, buffers, quotas, rate limits, TSDB and digests",
+        "evidence": "sentry/sentry.conf.example.py: SENTRY_CACHE, SENTRY_BUFFER, SENTRY_QUOTAS, SENTRY_RATELIMITER, SENTRY_TSDB, SENTRY_DIGESTS",
+        "implies": "Highly available managed Redis"
+      },
+      {
+        "id": "SIG-08",
+        "signal": "Memcached as the Django cache",
+        "evidence": "sentry/sentry.conf.example.py: CACHES memcached:11211",
+        "implies": "Managed Memcached"
+      },
+      {
+        "id": "SIG-09",
+        "signal": "Default event retention of 90 days",
+        "evidence": "sentry/sentry.conf.example.py: SENTRY_EVENT_RETENTION_DAYS default 90",
+        "implies": "Time-based expiry in ClickHouse and S3"
+      },
+      {
+        "id": "SIG-10",
+        "signal": "Kafka-backed task system (taskbroker, taskscheduler, taskworker)",
+        "evidence": "docker-compose.yml: taskbroker, taskscheduler, taskworker",
+        "implies": "Workers scaled on queue depth; no separate message broker needed"
+      },
+      {
+        "id": "SIG-11",
+        "signal": "Symbolication with local caches",
+        "evidence": "docker-compose.yml: symbolicator; sentry/config.example.yml: dsym.cache-path",
+        "implies": "Dedicated compute and a shared cache for debug files"
+      },
+      {
+        "id": "SIG-12",
+        "signal": "Outbound email over SMTP",
+        "evidence": "sentry/config.example.yml: mail.host smtp",
+        "implies": "Amazon SES"
+      },
+      {
+        "id": "SIG-13",
+        "signal": "Optional StatsD metrics for self-monitoring",
+        "evidence": "sentry/sentry.conf.example.py: SENTRY_STATSD_ADDR",
+        "implies": "Metrics agent feeding the firm's monitoring"
+      },
+      {
+        "id": "SIG-14",
+        "signal": "Single-organisation install",
+        "evidence": "sentry/sentry.conf.example.py: SENTRY_SINGLE_ORGANIZATION True",
+        "implies": "One organisation with teams and projects, managed through SSO"
+      },
+      {
+        "id": "SIG-15",
+        "signal": "Functional Source License",
+        "evidence": "LICENSE.md: FSL-1.1-Apache-2.0",
+        "implies": "Internal use is permitted; offering a competing hosted service is not"
+      }
+    ]
+  },
+  "scenario": {
+    "summary": "A large engineering organisation wants to run Sentry for 2,500 projects inside its own AWS accounts, because error and performance telemetry carries customer data and source context that may not leave the firm's environment.",
+    "assumptions": [
+      "3,000 engineers and 2,500 projects",
+      "5,000 events per second sustained and 25,000 per second during incident storms",
+      "About 2 TB per month of attachments, replays and profiles",
+      "Telemetry and backups stay in EU regions"
+    ],
+    "out_of_scope": [
+      "Sentry SaaS features that are not part of the self-hosted distribution",
+      "Multi-region active-active operation"
+    ]
+  },
+  "functional_requirements": [
+    {
+      "id": "FR-01",
+      "statement": "Ingest errors, transactions and spans, session replays, profiles, attachments, cron check-ins and uptime results from every supported SDK",
+      "source": "detected"
+    },
+    {
+      "id": "FR-02",
+      "statement": "Group issues, alert teams (email, Slack, PagerDuty) and create Jira tickets",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "FR-03",
+      "statement": "CI pipelines upload releases, source maps and debug files for symbolication",
+      "source": "detected"
+    },
+    {
+      "id": "FR-04",
+      "statement": "Search issues and build dashboards across errors and performance data",
+      "source": "detected"
+    },
+    {
+      "id": "FR-05",
+      "statement": "Engineers sign in through the corporate IdP; teams map to IdP groups",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "FR-06",
+      "statement": "Workloads in other AWS accounts send events without crossing the internet",
+      "source": "team-confirmed"
+    }
+  ],
+  "non_functional_requirements": [
+    {
+      "id": "NFR-SCL-01",
+      "category": "scalability",
+      "statement": "Absorb incident storms without dropping accepted events",
+      "target": "5,000 events/s sustained; 25,000 events/s for 30 minutes",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "NFR-AVL-01",
+      "category": "availability",
+      "statement": "Ingest stays up through the loss of one availability zone",
+      "target": "Ingest 99.95%; UI and API 99.9% monthly",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "NFR-DUR-01",
+      "category": "data",
+      "statement": "Accepted events are never lost",
+      "target": "Kafka replication factor 3 with min in-sync replicas 2; producer acks=all",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "NFR-PRF-01",
+      "category": "performance",
+      "statement": "New errors appear as issues quickly",
+      "target": "p95 under 60 seconds sustained, under 5 minutes during storms",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "NFR-PRF-02",
+      "category": "performance",
+      "statement": "Issue search is interactive",
+      "target": "p95 under 2 seconds",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "NFR-RET-01",
+      "category": "data",
+      "statement": "Telemetry expires automatically",
+      "target": "Errors 90 days; spans, replays and profiles 30 days",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-SEC-01",
+      "category": "security",
+      "statement": "Telemetry and backups stay in EU regions, encrypted with customer-managed keys",
+      "target": "100% of stores use KMS customer-managed keys; 0 non-EU copies",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-SEC-02",
+      "category": "security",
+      "statement": "PII is scrubbed before anything is stored",
+      "target": "Default and custom scrubbing rules enforced at Relay for 100% of projects",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-SEC-03",
+      "category": "security",
+      "statement": "SSO with MFA for everyone; local accounts only for break-glass",
+      "target": "At most 2 audited break-glass accounts",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-CMP-01",
+      "category": "compliance",
+      "statement": "Licence terms reviewed and the platform logged as an internal tool",
+      "target": "Legal approval of FSL-1.1 before go-live",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-NET-01",
+      "category": "networking",
+      "statement": "Internal SDK traffic stays private; only browser and mobile telemetry uses a public endpoint",
+      "target": "100% of internal producers on PrivateLink",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-OPS-01",
+      "category": "operations",
+      "statement": "Kafka consumer lag drives alerting and autoscaling",
+      "target": "Alert when any consumer group lags more than 5 minutes",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "NFR-CST-01",
+      "category": "cost",
+      "statement": "Storage cost is controlled with tiering and expiry",
+      "target": "ClickHouse data older than 7 days moves to S3; cost per million events reported monthly",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "NFR-DR-01",
+      "category": "disaster-recovery",
+      "statement": "Recover from regional loss using backups held in another EU region",
+      "target": "RPO 15 minutes for metadata, 24 hours for analytics; RTO 4 hours",
+      "source": "team-confirmed"
+    }
+  ],
+  "policy_conflicts": [
+    {
+      "id": "CON-01",
+      "between": [
+        "SIG-03",
+        "org policy: prefer managed data services"
+      ],
+      "summary": "ClickHouse has no AWS-managed equivalent inside the firm's accounts, and the hosted ClickHouse service would move telemetry out of them.",
+      "proposed_resolution": "Self-manage ClickHouse on EKS with the Altinity operator, S3 tiered storage and automated backups.",
+      "needs_exception": true
+    },
+    {
+      "id": "CON-02",
+      "between": [
+        "FR-01",
+        "NFR-NET-01"
+      ],
+      "summary": "Browser and mobile SDKs must reach an internet-facing endpoint, while firm policy discourages public data endpoints.",
+      "proposed_resolution": "Internet-facing ingest only for Relay, behind AWS WAF with rate limits and per-project DSN keys; all internal traffic over PrivateLink.",
+      "needs_exception": true
+    },
+    {
+      "id": "CON-03",
+      "between": [
+        "SIG-02",
+        "NFR-DUR-01"
+      ],
+      "summary": "Sentry's producer allows 50 MB messages, which is above common broker defaults.",
+      "proposed_resolution": "Raise message.max.bytes in the MSK configuration to match, and load-test the largest attachment and replay sizes before go-live.",
+      "needs_exception": false
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "Q-01",
+      "question": "Which teams need session replay, and does replay content need extra masking beyond the SDK defaults?",
+      "owner": "Privacy office",
+      "blocking": false
+    },
+    {
+      "id": "Q-02",
+      "question": "Should client-side sample rates be enforced centrally through SDK configuration?",
+      "owner": "Platform engineering",
+      "blocking": false
+    }
+  ],
+  "scoring": {
+    "rubric": "Mean of 12 parts: ten NFR categories (1 = numeric target, 0.5 = requirement without one, 0 = none), functional coverage, and conflict resolution; minus 0.05 per blocking open question. See ../README.md.",
+    "threshold": 0.85,
+    "completeness": 1.0,
+    "status": "ready-for-design",
+    "by_dimension": {
+      "security": 1.0,
+      "compliance": 1.0,
+      "availability": 1.0,
+      "disaster-recovery": 1.0,
+      "performance": 1.0,
+      "scalability": 1.0,
+      "operations": 1.0,
+      "networking": 1.0,
+      "data": 1.0,
+      "cost": 1.0,
+      "functional": 1.0,
+      "conflicts-resolved": 1.0
+    },
+    "gaps": []
+  }
+}

@@ -1,0 +1,333 @@
+{
+  "$schema": "cdp/requirements/v0",
+  "document": {
+    "id": "REQ-DIFY-001",
+    "title": "Enterprise AI agent platform on Dify",
+    "version": "1.0",
+    "status": "ready-for-design",
+    "created": "2026-10-08",
+    "produced_by": "Reference sample written in the Requirements Analyzer format (see ../README.md)"
+  },
+  "application": {
+    "name": "Dify",
+    "repository": "https://github.com/langgenius/dify",
+    "commit": "6d14cd586132",
+    "license": "Dify Open Source License (Apache 2.0 with additional conditions)",
+    "summary": "A platform for building LLM apps, RAG pipelines, workflows and agents through a visual console and APIs. The API, workers and web console are Python and Next.js; code execution and plugins run in separate Go services.",
+    "components": [
+      {
+        "name": "API",
+        "repository": "langgenius/dify (api/)",
+        "language": "Python (Flask)",
+        "role": "Console and app APIs, streaming responses, orchestration of models, tools and retrieval"
+      },
+      {
+        "name": "Worker and beat",
+        "repository": "langgenius/dify (api/)",
+        "language": "Python (Celery)",
+        "role": "Document indexing, workflow tasks, scheduled jobs"
+      },
+      {
+        "name": "Web",
+        "repository": "langgenius/dify (web/)",
+        "language": "TypeScript (Next.js)",
+        "role": "Console and published app UI"
+      },
+      {
+        "name": "Sandbox",
+        "repository": "langgenius/dify-sandbox",
+        "language": "Go",
+        "role": "Runs user-supplied Python and Node.js code with seccomp restrictions"
+      },
+      {
+        "name": "Plugin daemon",
+        "repository": "langgenius/dify-plugin-daemon",
+        "language": "Go",
+        "role": "Installs and runs model-provider, tool and extension plugins"
+      },
+      {
+        "name": "SSRF proxy",
+        "repository": "langgenius/dify (docker/ssrf_proxy)",
+        "language": "Squid",
+        "role": "Forward proxy for outbound HTTP from the API, workers, sandbox and plugins"
+      }
+    ],
+    "detected_signals": [
+      {
+        "id": "SIG-01",
+        "signal": "39 services in the Compose file: api, api_websocket, worker, worker_beat, web, sandbox, plugin_daemon, agent_backend, two SSRF proxies, nginx, databases and vector stores",
+        "evidence": "docker/docker-compose.yaml: services",
+        "implies": "Container platform; most services are stateless"
+      },
+      {
+        "id": "SIG-02",
+        "signal": "Celery workers and beat scheduler with a Redis broker",
+        "evidence": "docker/docker-compose.yaml: worker MODE=worker, worker_beat MODE=beat; CELERY_BROKER_URL",
+        "implies": "Managed Redis-compatible cache with TLS, non-clustered for Celery"
+      },
+      {
+        "id": "SIG-03",
+        "signal": "File storage defaults to a local OpenDAL filesystem; the AWS sample switches it to S3",
+        "evidence": "docker/.env.example: STORAGE_TYPE=opendal; aws-samples CDK lib/constructs/dify-services/api.ts: STORAGE_TYPE 's3'",
+        "implies": "Shared object storage (Amazon S3) so API and worker tasks can scale out"
+      },
+      {
+        "id": "SIG-04",
+        "signal": "Pluggable vector store; pgvector and OpenSearch are among more than a dozen options",
+        "evidence": "docker/docker-compose.yaml: pgvector, opensearch, qdrant, weaviate, milvus, and others; VECTOR_STORE",
+        "implies": "Choose a vector store that fits scale and operations"
+      },
+      {
+        "id": "SIG-05",
+        "signal": "User-supplied code runs in DifySandbox, with network enabled by default",
+        "evidence": "docker/docker-compose.yaml: sandbox ENABLE_NETWORK default true, WORKER_TIMEOUT 15",
+        "implies": "Strong isolation and egress control for untrusted code"
+      },
+      {
+        "id": "SIG-06",
+        "signal": "Outbound HTTP from api, worker, plugin daemon and sandbox goes through a Squid SSRF proxy",
+        "evidence": "docker/docker-compose.yaml: ssrf_proxy, ssrf_proxy_network",
+        "implies": "Egress allowlist, and blocking of internal address ranges"
+      },
+      {
+        "id": "SIG-07",
+        "signal": "Plugin daemon installs third-party plugins, with a 50 MB package limit",
+        "evidence": "docker/docker-compose.yaml: plugin_daemon; PLUGIN_MAX_PACKAGE_SIZE 52428800",
+        "implies": "Supply-chain control: only reviewed plugins from an internal source"
+      },
+      {
+        "id": "SIG-08",
+        "signal": "Agent backend with a local shell sandbox, separated from the API by its own proxy",
+        "evidence": "docker/docker-compose.yaml: agent_backend, agent_ssrf_proxy, DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT",
+        "implies": "Highest-risk component; isolate it or defer it"
+      },
+      {
+        "id": "SIG-09",
+        "signal": "AWS reference deployment: ECS Fargate, Aurora PostgreSQL Serverless v2 (2 ACU max) with pgvector, ElastiCache Valkey (cache.t4g.micro), S3, ALB, SES, and VPC endpoints for Bedrock",
+        "evidence": "aws-samples/dify-self-hosted-on-aws: lib/constructs/postgres.ts, redis.ts, vpc-endpoints.ts",
+        "implies": "A proven AWS baseline, sized for small teams"
+      },
+      {
+        "id": "SIG-10",
+        "signal": "In the AWS sample, the sandbox and plugin daemon run as sidecars in the API task and share its IAM role",
+        "evidence": "aws-samples/dify-self-hosted-on-aws: lib/constructs/dify-services/api.ts (CODE_EXECUTION_ENDPOINT http://localhost:8194; storageBucket.grantReadWrite(taskRole))",
+        "implies": "User code shares the API's network namespace and credentials unless it is split out"
+      },
+      {
+        "id": "SIG-11",
+        "signal": "Licence conditions: operating multiple workspaces (tenants) or removing the console logo needs a commercial licence",
+        "evidence": "LICENSE: conditions 1a and 1b",
+        "implies": "Per-team workspaces require Dify Enterprise"
+      },
+      {
+        "id": "SIG-12",
+        "signal": "Single sign-on is an Enterprise Edition feature",
+        "evidence": "Dify Enterprise docs: SSO authentication",
+        "implies": "Community Edition cannot meet an SSO mandate on its own"
+      }
+    ]
+  },
+  "scenario": {
+    "summary": "A firm wants an internal platform where teams build chat assistants, RAG apps, workflows and agents over internal documents. All model inference must go through Amazon Bedrock in-region; every prompt, response and tool call is audited.",
+    "assumptions": [
+      "5,000 employees and 800 peak concurrent sessions",
+      "About 200 published apps and 40 team workspaces",
+      "Knowledge bases of up to 2 million chunks in total",
+      "Access only from the corporate network; no public endpoint"
+    ],
+    "out_of_scope": [
+      "Fine-tuning or hosting self-managed models",
+      "Customer-facing apps on the public internet"
+    ]
+  },
+  "functional_requirements": [
+    {
+      "id": "FR-01",
+      "statement": "Teams build chat apps, workflows and agents with retrieval over internal documents",
+      "source": "detected"
+    },
+    {
+      "id": "FR-02",
+      "statement": "Employees use published apps in the web UI; internal services call them through app API keys",
+      "source": "detected"
+    },
+    {
+      "id": "FR-03",
+      "statement": "Each team gets its own workspace with separate apps, knowledge bases and usage reporting",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "FR-04",
+      "statement": "Workflows can run code and call HTTP tools",
+      "source": "detected"
+    },
+    {
+      "id": "FR-05",
+      "statement": "Only security-reviewed plugins and tools are available",
+      "source": "org-policy"
+    }
+  ],
+  "non_functional_requirements": [
+    {
+      "id": "NFR-SEC-01",
+      "category": "security",
+      "statement": "Models come only from Amazon Bedrock in the approved region; no traffic to other LLM APIs",
+      "target": "100% of model calls through Bedrock VPC endpoints; other model providers disabled",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-SEC-02",
+      "category": "security",
+      "statement": "Single sign-on with MFA for every user, and prompt deprovisioning",
+      "target": "Access removed within 1 hour of leaving",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-SEC-03",
+      "category": "security",
+      "statement": "Untrusted code runs with no credentials, no direct network access and resource limits",
+      "target": "0 IAM permissions in the sandbox task; 15-second execution limit",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-SEC-04",
+      "category": "security",
+      "statement": "Prompts and responses are screened for PII and harmful content",
+      "target": "Bedrock Guardrails on 100% of production apps",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-CMP-01",
+      "category": "compliance",
+      "statement": "Prompts, responses, tool calls and user identity are retained for audit and cannot be altered",
+      "target": "1-year retention in WORM storage",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-NET-01",
+      "category": "networking",
+      "statement": "All outbound HTTP from the platform goes through an allowlisting proxy that blocks internal and metadata addresses",
+      "target": "0 direct egress paths from application tasks",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-DAT-01",
+      "category": "data",
+      "statement": "Documents, embeddings and conversations stay in the region, encrypted with customer-managed keys",
+      "target": "100% of stores use KMS customer-managed keys",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-AVL-01",
+      "category": "availability",
+      "statement": "The platform survives the loss of one availability zone",
+      "target": "99.9% monthly availability",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "NFR-PRF-01",
+      "category": "performance",
+      "statement": "Platform overhead stays small compared with model latency",
+      "target": "p95 platform overhead under 300 ms, excluding model inference",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "NFR-SCL-01",
+      "category": "scalability",
+      "statement": "Serve peak load and large knowledge bases",
+      "target": "800 concurrent sessions; 50 requests per second; 2 million chunks",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "NFR-OPS-01",
+      "category": "operations",
+      "statement": "Queue depth and task failures are monitored and alerted",
+      "target": "Alert when the Celery queue backlog exceeds 5 minutes",
+      "source": "team-confirmed"
+    },
+    {
+      "id": "NFR-CST-01",
+      "category": "cost",
+      "statement": "Model spend is attributed to each team, with budgets",
+      "target": "Monthly Bedrock cost per workspace; alert at 80% of budget",
+      "source": "org-policy"
+    },
+    {
+      "id": "NFR-DR-01",
+      "category": "disaster-recovery",
+      "statement": "Recover the platform in a second region from backups",
+      "target": "RPO 15 minutes; RTO 4 hours",
+      "source": "team-confirmed"
+    }
+  ],
+  "policy_conflicts": [
+    {
+      "id": "CON-01",
+      "between": [
+        "NFR-SEC-02",
+        "FR-03",
+        "SIG-11",
+        "SIG-12"
+      ],
+      "summary": "SSO and per-team workspaces are required, but SSO is Enterprise-only and multi-workspace operation needs a commercial licence.",
+      "proposed_resolution": "License Dify Enterprise for SSO and multiple workspaces, subject to vendor risk assessment.",
+      "needs_exception": true
+    },
+    {
+      "id": "CON-02",
+      "between": [
+        "FR-04",
+        "NFR-SEC-03",
+        "SIG-10"
+      ],
+      "summary": "Workflows run user-supplied code. In the AWS sample that code shares the API task's network namespace and IAM role.",
+      "proposed_resolution": "Run the sandbox as its own service in an isolated subnet with no task role; its only route out is the SSRF proxy.",
+      "needs_exception": true
+    },
+    {
+      "id": "CON-03",
+      "between": [
+        "SIG-08",
+        "NFR-SEC-03"
+      ],
+      "summary": "The agent backend's local shell sandbox gives agents a general-purpose shell.",
+      "proposed_resolution": "Leave the agent backend off at launch, and enable it after a dedicated security review.",
+      "needs_exception": false
+    }
+  ],
+  "open_questions": [
+    {
+      "id": "Q-01",
+      "question": "Do knowledge bases need per-document access control that mirrors the source systems?",
+      "owner": "Data governance",
+      "blocking": false
+    },
+    {
+      "id": "Q-02",
+      "question": "Which external APIs belong on the egress allowlist for tools?",
+      "owner": "Security",
+      "blocking": false
+    }
+  ],
+  "scoring": {
+    "rubric": "Mean of 12 parts: ten NFR categories (1 = numeric target, 0.5 = requirement without one, 0 = none), functional coverage, and conflict resolution; minus 0.05 per blocking open question. See ../README.md.",
+    "threshold": 0.85,
+    "completeness": 1.0,
+    "status": "ready-for-design",
+    "by_dimension": {
+      "security": 1.0,
+      "compliance": 1.0,
+      "availability": 1.0,
+      "disaster-recovery": 1.0,
+      "performance": 1.0,
+      "scalability": 1.0,
+      "operations": 1.0,
+      "networking": 1.0,
+      "data": 1.0,
+      "cost": 1.0,
+      "functional": 1.0,
+      "conflicts-resolved": 1.0
+    },
+    "gaps": []
+  }
+}

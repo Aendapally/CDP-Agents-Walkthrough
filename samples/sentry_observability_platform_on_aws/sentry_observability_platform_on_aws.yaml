@@ -1,0 +1,296 @@
+diagram:
+  name: Sentry Observability Platform on AWS
+  direction: left-to-right
+  format: png
+  open: true
+  style:
+    graph:
+      splines: ortho
+      nodesep: 0.7
+      ranksep: 1.3
+      fontsize: 24
+  resources:
+    # Producers and users outside the platform account
+    - id: public_apps
+      name: Web & mobile apps (Sentry SDKs)
+      type: aws.general.MobileClient
+      relates:
+        - to: public_waf
+          direction: outgoing
+          label: Events (HTTPS)
+
+    - id: internal_workloads
+      name: Internal services (other AWS accounts)
+      type: aws.compute.ECS
+      relates:
+        - to: privatelink
+          direction: outgoing
+          label: Events (private)
+
+    - id: engineers
+      name: Engineers
+      type: aws.general.Users
+      relates:
+        - to: internal_alb
+          direction: outgoing
+          label: UI / API
+
+    - id: ci
+      name: CI pipelines
+      type: aws.devtools.Codepipeline
+      relates:
+        - to: internal_alb
+          direction: outgoing
+          label: Releases, source maps, debug files
+
+    - id: idp
+      name: Corporate IdP (SAML)
+      type: aws.security.SingleSignOn
+      relates:
+        - to: web
+          direction: incoming
+          label: SSO
+
+    - id: alert_targets
+      name: Slack, PagerDuty, Jira
+      type: aws.general.InternetAlt1
+
+    # Single region keeps telemetry in one jurisdiction
+    - id: region_primary
+      name: AWS Region (EU) - 3 AZs
+      type: cluster
+      of:
+        - id: edge
+          name: Edge
+          type: cluster
+          of:
+            - id: public_waf
+              name: AWS WAF (rate limits, bot control)
+              type: aws.security.WAF
+              relates:
+                - to: public_alb
+                  direction: outgoing
+            - id: public_alb
+              name: Public ingest ALB
+              type: aws.network.ElbApplicationLoadBalancer
+              relates:
+                - to: relay
+                  direction: outgoing
+            - id: privatelink
+              name: PrivateLink endpoint service (NLB)
+              type: aws.network.Privatelink
+              relates:
+                - to: relay
+                  direction: outgoing
+            - id: internal_alb
+              name: Internal ALB (UI / API)
+              type: aws.network.ElbApplicationLoadBalancer
+              relates:
+                - to: web
+                  direction: outgoing
+
+        - id: ingest_tier
+          name: Ingest - EKS
+          type: cluster
+          of:
+            - id: relay
+              name: Relay fleet (auth, quotas, PII scrubbing)
+              type: k8s.compute.Deployment
+              relates:
+                - to: msk
+                  direction: outgoing
+                  label: ingest-* topics
+                - to: redis
+                  direction: outgoing
+                  label: Quotas, rate limits
+
+        - id: processing_tier
+          name: Processing - EKS (autoscaled on Kafka lag)
+          type: cluster
+          of:
+            - id: ingest_consumers
+              name: Ingest consumers (errors, transactions, spans, monitors)
+              type: k8s.compute.Deployment
+              relates:
+                - to: nodestore
+                  direction: outgoing
+                  label: Raw event payloads
+                - to: aurora
+                  direction: outgoing
+                  label: Issues, groups
+                - to: symbolicator
+                  direction: outgoing
+                  label: Symbolicate
+            - id: snuba_consumers
+              name: Snuba consumers x18
+              type: k8s.compute.Deployment
+              relates:
+                - to: clickhouse
+                  direction: outgoing
+                  label: Batched inserts
+            - id: post_process
+              name: Post-process forwarders
+              type: k8s.compute.Deployment
+              relates:
+                - to: task_workers
+                  direction: outgoing
+                  label: Alerts, workflows
+            - id: task_workers
+              name: Taskbroker + task workers
+              type: k8s.compute.Deployment
+              relates:
+                - to: ses
+                  direction: outgoing
+                  label: Email
+                - to: egress
+                  direction: outgoing
+                  label: Notifications
+            - id: symbolicator
+              name: Symbolicator
+              type: k8s.compute.Deployment
+              relates:
+                - to: files
+                  direction: outgoing
+                  label: Debug files, cache
+            - id: uptime
+              name: Uptime checker + cron monitors
+              type: k8s.compute.Deployment
+
+        - id: query_tier
+          name: Web & query - EKS
+          type: cluster
+          of:
+            - id: web
+              name: Sentry web + API
+              type: k8s.compute.Deployment
+              relates:
+                - to: aurora
+                  direction: outgoing
+                - to: snuba_api
+                  direction: outgoing
+                  label: Search, dashboards
+                - to: memcached
+                  direction: outgoing
+                  label: Page cache
+                - to: files
+                  direction: outgoing
+                  label: Attachments, replays
+                - to: vroom
+                  direction: outgoing
+                  label: Profiles
+            - id: snuba_api
+              name: Snuba API
+              type: k8s.compute.Deployment
+              relates:
+                - to: clickhouse
+                  direction: outgoing
+            - id: vroom
+              name: Vroom (profiling)
+              type: k8s.compute.Deployment
+              relates:
+                - to: files
+                  direction: outgoing
+
+        - id: clickhouse_tier
+          name: ClickHouse - EKS (Altinity operator)
+          type: cluster
+          of:
+            - id: clickhouse
+              name: ClickHouse shards x 2 replicas
+              type: k8s.compute.StatefulSet
+              relates:
+                - to: keeper
+                  direction: outgoing
+                  label: Replication metadata
+                - to: clickhouse_storage
+                  direction: outgoing
+                  label: Cold parts, backups
+            - id: keeper
+              name: ClickHouse Keeper x3
+              type: k8s.compute.StatefulSet
+
+        - id: msk
+          name: Amazon MSK (3 AZs, RF 3)
+          type: aws.analytics.ManagedStreamingForKafka
+          relates:
+            - to: uptime
+              direction: incoming
+              label: Check results
+            - to: ingest_consumers
+              direction: outgoing
+            - to: snuba_consumers
+              direction: outgoing
+              label: Events, spans, outcomes
+            - to: post_process
+              direction: outgoing
+            - to: task_workers
+              direction: outgoing
+              label: Task topics
+
+        - id: data
+          name: Data - private subnets
+          type: cluster
+          of:
+            - id: aurora
+              name: Aurora PostgreSQL + RDS Proxy
+              type: aws.database.Aurora
+              relates:
+                - to: backup
+                  direction: outgoing
+                  label: PITR snapshots
+            - id: redis
+              name: ElastiCache Redis (quotas, buffers, digests)
+              type: aws.database.ElastiCache
+            - id: memcached
+              name: ElastiCache Memcached
+              type: aws.database.ElastiCache
+            - id: nodestore
+              name: S3 nodestore (90-day lifecycle)
+              type: aws.storage.SimpleStorageServiceS3Bucket
+            - id: files
+              name: S3 files (attachments, replays, profiles, debug files)
+              type: aws.storage.SimpleStorageServiceS3Bucket
+            - id: clickhouse_storage
+              name: S3 ClickHouse cold tier + backups
+              type: aws.storage.SimpleStorageServiceS3BucketWithObjects
+              relates:
+                - to: dr_backups
+                  direction: outgoing
+                  label: Cross-region copy
+
+        - id: operations
+          name: Security & operations
+          type: cluster
+          of:
+            - id: kms
+              name: KMS keys + Secrets Manager
+              type: aws.security.KMS
+            - id: monitoring
+              name: CloudWatch (Container Insights, consumer-lag alarms)
+              type: aws.management.Cloudwatch
+            - id: backup
+              name: AWS Backup
+              type: aws.storage.Backup
+              relates:
+                - to: dr_backups
+                  direction: outgoing
+                  label: Vault copy
+            - id: ses
+              name: Amazon SES
+              type: aws.engagement.SimpleEmailServiceSes
+
+        - id: egress
+          name: Egress - Network Firewall allowlist + NAT
+          type: aws.network.NATGateway
+          relates:
+            - to: alert_targets
+              direction: outgoing
+
+    # Backups stay in the same jurisdiction
+    - id: region_backup
+      name: AWS Region (EU) - backup copies
+      type: cluster
+      of:
+        - id: dr_backups
+          name: Backup vault + S3 replica
+          type: aws.storage.Backup

@@ -1,0 +1,290 @@
+diagram:
+  name: Signal Secure Messaging on AWS
+  direction: left-to-right
+  format: png
+  open: true
+  style:
+    graph:
+      splines: ortho
+      nodesep: 0.7
+      ranksep: 1.3
+      fontsize: 24
+  resources:
+    # People and services outside the firm's AWS accounts
+    - id: employees
+      name: Employee devices (MDM-managed)
+      type: aws.general.Users
+      relates:
+        - to: route53
+          direction: outgoing
+        - to: attachments_cdn
+          direction: outgoing
+          label: Attachment download
+        - to: calls_nlb
+          direction: outgoing
+          label: Group calls (UDP)
+        - to: turn
+          direction: outgoing
+          label: 1:1 call relay
+        - to: capture_api
+          direction: outgoing
+          label: Compliance journal (encrypted)
+
+    - id: idp
+      name: Corporate IdP (SSO + SCIM)
+      type: aws.security.SingleSignOn
+      relates:
+        - to: registration
+          direction: incoming
+          label: Verify employee (OIDC)
+        - to: directory
+          direction: outgoing
+          label: SCIM sync
+
+    - id: push_providers
+      name: Push providers
+      type: cluster
+      of:
+        - id: apns
+          name: Apple APNs
+          type: generic.os.IOS
+        - id: fcm
+          name: Google FCM
+          type: generic.os.Android
+
+    - id: surveillance
+      name: Approved surveillance & e-discovery platform
+      type: aws.general.TraditionalServer
+
+    # Primary region: production workload account
+    - id: region_primary
+      name: AWS Region A - primary (3 AZs)
+      type: cluster
+      of:
+        - id: edge
+          name: Edge
+          type: cluster
+          of:
+            - id: route53
+              name: Route 53 (failover routing)
+              type: aws.network.Route53
+              relates:
+                - to: chat_waf
+                  direction: outgoing
+                - to: dr_eks
+                  direction: outgoing
+                  label: Regional failover
+                  style: dashed
+            - id: chat_waf
+              name: AWS WAF + Shield Advanced
+              type: aws.security.WAF
+              relates:
+                - to: chat_alb
+                  direction: outgoing
+            - id: chat_alb
+              name: Chat ALB (WebSocket, TLS 1.3)
+              type: aws.network.ElbApplicationLoadBalancer
+              relates:
+                - to: chat
+                  direction: outgoing
+                  label: WebSocket + gRPC
+                - to: registration
+                  direction: outgoing
+                - to: directory
+                  direction: outgoing
+                - to: storage_service
+                  direction: outgoing
+                - to: key_transparency
+                  direction: outgoing
+                - to: upload
+                  direction: outgoing
+                  label: Uploads (tus)
+            - id: attachments_cdn
+              name: CloudFront (signed URLs)
+              type: aws.network.CloudFront
+              relates:
+                - to: attachments
+                  direction: outgoing
+                  label: Origin access control
+            - id: calls_nlb
+              name: NLB (UDP) for calls
+              type: aws.network.ElbNetworkLoadBalancer
+              relates:
+                - to: sfu
+                  direction: outgoing
+
+        - id: eks
+          name: Amazon EKS - private subnets
+          type: cluster
+          of:
+            - id: chat
+              name: Chat service x N (Signal-Server)
+              type: k8s.compute.Deployment
+              relates:
+                - to: dynamodb
+                  direction: outgoing
+                  label: Accounts, keys, profiles
+                - to: redis
+                  direction: outgoing
+                  label: Presence, pub/sub, rate limits
+                - to: foundationdb
+                  direction: outgoing
+                  label: Message queues
+                - to: config_bucket
+                  direction: outgoing
+                  label: Prekeys, dynamic config
+                - to: egress
+                  direction: outgoing
+                  label: Push wake-ups
+                - to: telemetry
+                  direction: outgoing
+                  label: OpenTelemetry (no content)
+            - id: registration
+              name: Registration service (SSO-gated)
+              type: k8s.compute.Deployment
+            - id: directory
+              name: Firm directory service
+              type: k8s.compute.Deployment
+            - id: storage_service
+              name: Storage service (groups, encrypted sync)
+              type: k8s.compute.Deployment
+              relates:
+                - to: dynamodb
+                  direction: outgoing
+                  label: Ported from Bigtable
+            - id: key_transparency
+              name: Key transparency service
+              type: k8s.compute.Deployment
+              relates:
+                - to: dynamodb
+                  direction: outgoing
+                  label: Transparency log
+            - id: upload
+              name: Attachment upload service (tus)
+              type: k8s.compute.Deployment
+              relates:
+                - to: attachments
+                  direction: outgoing
+                  label: Encrypted blobs
+
+        - id: calling
+          name: Calling - public subnets
+          type: cluster
+          of:
+            - id: sfu
+              name: Group-call SFU (Signal-Calling-Service)
+              type: aws.compute.EC2Instances
+            - id: turn
+              name: TURN relays (Elastic IPs)
+              type: aws.compute.EC2
+
+        - id: data
+          name: Data - private subnets
+          type: cluster
+          of:
+            - id: dynamodb
+              name: DynamoDB (on-demand, PITR)
+              type: aws.database.Dynamodb
+              relates:
+                - to: dr_dynamodb
+                  direction: outgoing
+                  label: Global tables
+            - id: redis
+              name: ElastiCache for Redis (5 clusters)
+              type: aws.database.ElastiCache
+            - id: foundationdb
+              name: FoundationDB message store (EC2 i4i, 3 AZs)
+              type: aws.compute.EC2Instances
+              relates:
+                - to: dr_foundationdb
+                  direction: outgoing
+                  label: Async DR
+            - id: attachments
+              name: S3 attachments (SSE-KMS)
+              type: aws.storage.SimpleStorageServiceS3Bucket
+              relates:
+                - to: dr_s3
+                  direction: outgoing
+                  label: Cross-region replication
+            - id: config_bucket
+              name: S3 prekeys & dynamic config
+              type: aws.storage.SimpleStorageServiceS3Bucket
+
+        - id: operations
+          name: Security & operations
+          type: cluster
+          of:
+            - id: kms
+              name: KMS keys + Secrets Manager
+              type: aws.security.KMS
+            - id: telemetry
+              name: CloudWatch, X-Ray, CloudTrail, GuardDuty
+              type: aws.management.Cloudwatch
+
+        - id: egress
+          name: Egress - Network Firewall allowlist + NAT
+          type: aws.network.NATGateway
+          relates:
+            - to: apns
+              direction: outgoing
+            - to: fcm
+              direction: outgoing
+
+    # Separate AWS account: compliance capture and books-and-records archive
+    - id: compliance_account
+      name: Compliance account (isolated)
+      type: cluster
+      of:
+        - id: capture_api
+          name: Capture API (mTLS)
+          type: aws.network.APIGateway
+          relates:
+            - to: capture_queue
+              direction: outgoing
+        - id: capture_queue
+          name: Capture queue (SQS FIFO)
+          type: aws.integration.SQS
+          relates:
+            - to: archiver
+              direction: outgoing
+        - id: archiver
+          name: Archive processor (Lambda)
+          type: aws.compute.Lambda
+          relates:
+            - to: worm_archive
+              direction: outgoing
+              label: Write once
+            - to: archive_key
+              direction: outgoing
+              label: Decrypt (isolated role only)
+            - to: surveillance
+              direction: outgoing
+              label: Export (EML)
+        - id: worm_archive
+          name: WORM archive (S3 Object Lock, 7 years)
+          type: aws.storage.SimpleStorageServiceS3BucketWithObjects
+          relates:
+            - to: dr_s3
+              direction: outgoing
+              label: Object Lock replication
+        - id: archive_key
+          name: Archive key (KMS custom key store on CloudHSM)
+          type: aws.security.CloudHSM
+
+    # Second region: warm standby
+    - id: region_dr
+      name: AWS Region B - warm standby
+      type: cluster
+      of:
+        - id: dr_eks
+          name: EKS (scaled down)
+          type: aws.compute.EKS
+        - id: dr_dynamodb
+          name: DynamoDB replica
+          type: aws.database.Dynamodb
+        - id: dr_foundationdb
+          name: FoundationDB DR cluster
+          type: aws.compute.EC2Instances
+        - id: dr_s3
+          name: S3 replicas (attachments, WORM archive)
+          type: aws.storage.S3

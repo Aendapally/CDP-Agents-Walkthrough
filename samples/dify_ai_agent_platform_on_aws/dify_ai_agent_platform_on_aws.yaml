@@ -1,0 +1,241 @@
+diagram:
+  name: Dify AI Agent Platform on AWS
+  direction: left-to-right
+  format: png
+  open: true
+  style:
+    graph:
+      splines: ortho
+      nodesep: 0.7
+      ranksep: 1.3
+      fontsize: 24
+  resources:
+    # People and systems outside the platform account
+    - id: employees
+      name: Employees (corporate network)
+      type: aws.general.Users
+      relates:
+        - to: corporate_link
+          direction: outgoing
+
+    - id: internal_apps
+      name: Internal apps (app API keys)
+      type: aws.general.Client
+      relates:
+        - to: corporate_link
+          direction: outgoing
+
+    - id: idp
+      name: Corporate IdP (SAML / OIDC)
+      type: aws.security.SingleSignOn
+      relates:
+        - to: api
+          direction: incoming
+          label: SSO (Dify Enterprise)
+
+    - id: external_apis
+      name: Allowlisted external APIs
+      type: aws.general.InternetAlt1
+
+    - id: corporate_link
+      name: Direct Connect / VPN
+      type: aws.network.DirectConnect
+      relates:
+        - to: waf
+          direction: outgoing
+
+    - id: region_primary
+      name: AWS Region - 3 AZs
+      type: cluster
+      of:
+        - id: edge
+          name: Private edge
+          type: cluster
+          of:
+            - id: waf
+              name: AWS WAF
+              type: aws.security.WAF
+              relates:
+                - to: alb
+                  direction: outgoing
+            - id: alb
+              name: Internal ALB (TLS)
+              type: aws.network.ElbApplicationLoadBalancer
+              relates:
+                - to: web
+                  direction: outgoing
+                  label: Console UI
+                - to: api
+                  direction: outgoing
+                  label: API + streaming
+
+        - id: ecs
+          name: Amazon ECS on Fargate - private subnets
+          type: cluster
+          of:
+            - id: web
+              name: Web (Next.js)
+              type: aws.compute.ElasticContainerServiceService
+            - id: api
+              name: API + websocket
+              type: aws.compute.ElasticContainerServiceService
+              relates:
+                - to: aurora_app
+                  direction: outgoing
+                  label: Apps, conversations
+                - to: aurora_vectors
+                  direction: outgoing
+                  label: Retrieval
+                - to: valkey
+                  direction: outgoing
+                  label: Cache, task queue
+                - to: files
+                  direction: outgoing
+                - to: plugin_daemon
+                  direction: outgoing
+                  label: Tools, model providers
+                - to: sandbox
+                  direction: outgoing
+                  label: Run user code
+                - to: vpc_endpoints
+                  direction: outgoing
+                  label: Model calls
+                - to: ssrf_proxy
+                  direction: outgoing
+                  label: HTTP tool calls
+            - id: worker
+              name: Celery workers (indexing, workflows)
+              type: aws.compute.ElasticContainerServiceService
+              relates:
+                - to: aurora_vectors
+                  direction: outgoing
+                  label: Index chunks
+                - to: valkey
+                  direction: outgoing
+                  label: Broker
+                - to: files
+                  direction: outgoing
+                  label: Documents
+                - to: vpc_endpoints
+                  direction: outgoing
+                  label: Embeddings
+                - to: audit_bucket
+                  direction: outgoing
+                  label: Conversation export
+                - to: ses
+                  direction: outgoing
+                  label: Email
+            - id: beat
+              name: Celery beat (schedules)
+              type: aws.compute.ElasticContainerServiceService
+              relates:
+                - to: valkey
+                  direction: outgoing
+            - id: plugin_daemon
+              name: Plugin daemon (allowlisted plugins)
+              type: aws.compute.ElasticContainerServiceService
+              relates:
+                - to: ssrf_proxy
+                  direction: outgoing
+
+        - id: isolated
+          name: Isolated subnet - no task role, no direct egress
+          type: cluster
+          of:
+            - id: sandbox
+              name: DifySandbox (code execution)
+              type: aws.compute.Fargate
+              relates:
+                - to: ssrf_proxy
+                  direction: outgoing
+
+        - id: egress_control
+          name: Egress control
+          type: cluster
+          of:
+            - id: ssrf_proxy
+              name: SSRF proxy (Squid)
+              type: aws.compute.ElasticContainerServiceService
+              relates:
+                - to: egress
+                  direction: outgoing
+            - id: egress
+              name: Network Firewall allowlist + NAT
+              type: aws.network.NATGateway
+              relates:
+                - to: external_apis
+                  direction: outgoing
+
+        - id: models
+          name: Amazon Bedrock over PrivateLink
+          type: cluster
+          of:
+            - id: vpc_endpoints
+              name: VPC interface endpoints
+              type: aws.network.Endpoint
+              relates:
+                - to: bedrock
+                  direction: outgoing
+            - id: bedrock
+              name: Amazon Bedrock (models, embeddings, Guardrails)
+              type: aws.ml.MachineLearning
+              relates:
+                - to: audit_bucket
+                  direction: outgoing
+                  label: Invocation logs
+
+        - id: data
+          name: Data - private subnets
+          type: cluster
+          of:
+            - id: aurora_app
+              name: Aurora PostgreSQL (app + plugin metadata)
+              type: aws.database.Aurora
+              relates:
+                - to: backups
+                  direction: outgoing
+                  label: Snapshot copy
+            - id: aurora_vectors
+              name: Aurora PostgreSQL + pgvector (knowledge bases)
+              type: aws.database.Aurora
+            - id: valkey
+              name: ElastiCache Valkey (Multi-AZ, TLS)
+              type: aws.database.ElastiCache
+            - id: files
+              name: S3 (uploads, knowledge files, plugin packages)
+              type: aws.storage.SimpleStorageServiceS3Bucket
+              relates:
+                - to: backups
+                  direction: outgoing
+                  label: Replication
+
+        - id: governance
+          name: Governance & operations
+          type: cluster
+          of:
+            - id: audit_bucket
+              name: S3 AI audit log (Object Lock, 1 year)
+              type: aws.storage.SimpleStorageServiceS3BucketWithObjects
+            - id: athena
+              name: Athena (audit queries)
+              type: aws.analytics.Athena
+              relates:
+                - to: audit_bucket
+                  direction: outgoing
+            - id: monitoring
+              name: CloudWatch (Container Insights, queue-depth alarms)
+              type: aws.management.Cloudwatch
+            - id: kms
+              name: KMS keys + Secrets Manager
+              type: aws.security.KMS
+            - id: ses
+              name: Amazon SES
+              type: aws.engagement.SimpleEmailServiceSes
+
+    - id: region_backup
+      name: AWS Region B - backups
+      type: cluster
+      of:
+        - id: backups
+          name: Aurora snapshot copies + S3 replica
+          type: aws.storage.Backup
