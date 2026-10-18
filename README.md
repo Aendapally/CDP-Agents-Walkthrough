@@ -37,7 +37,6 @@ Whether Pages is available for private repositories, and who can view the site, 
 | Click a box | Jump to the step where it appears |
 | Click an artifact in the green column | Open its sample |
 | **Sample artifacts** | Open the viewer; switch between Signal, Sentry and Dify at the top |
-| **Build status** | Colour each component by what ships today, what is in progress and what is planned |
 | **Zoom to step** | Follow the active step; turn it off to show the whole diagram |
 | **Auto-play** | Advance every 8 seconds |
 
@@ -47,7 +46,7 @@ The page also works offline: open `index.html` in a browser. Without an internet
 
 ## About the samples
 
-The samples are reference architectures written in the CDP-Agents artifact formats, not the output of an end-to-end agent run. Several stages they illustrate (repo scanning, requirement scoring, specialist debate) are not built yet. Each sample follows the CDP-Agents flow against a public repository at a pinned commit, and every detected signal cites the file it came from.
+The samples are reference architectures written in the CDP-Agents artifact formats, not output captured from running the agents. Each sample follows the CDP-Agents flow against a public repository at a pinned commit, and every detected signal cites the file it came from.
 
 - User counts, throughput and recovery targets are illustrative assumptions. Each `requirements.json` states them.
 - The YAML passes the project's diagrams-as-code schema, and the diagrams were rendered with the project's own diagram tool.
