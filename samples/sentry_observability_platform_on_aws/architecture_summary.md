@@ -64,7 +64,7 @@ The design follows the stack's own data path: Relay authenticates and scrubs eve
 
 | ID | Request | Why | Compensating controls | Approvers |
 |---|---|---|---|---|
-| EXC-01 | Operate self-managed ClickHouse | No managed option inside the firm's accounts (CON-01) | Altinity operator, replicas across AZs, nightly backups to S3 with cross-region copy, restore tested quarterly, on-call runbooks | Platform engineering lead, CCoE |
+| EXC-01 | Operate self-managed ClickHouse | No managed option inside the firm's accounts (CON-01) | Altinity operator, replicas across AZs, nightly backups to S3 with cross-region copy, restore tested quarterly, on-call runbooks | Platform engineering lead, CGC |
 | EXC-02 | Internet-facing ingest endpoint for browser and mobile SDKs | Client-side telemetry cannot use PrivateLink (CON-02) | Only Relay is exposed; WAF rate limits and bot control; per-project DSN keys with quotas; PII scrubbed before storage | CISO |
 
 The FSL-1.1 licence permits internal use. Legal sign-off is tracked as NFR-CMP-01 rather than as an exception.

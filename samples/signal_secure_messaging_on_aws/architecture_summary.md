@@ -64,7 +64,7 @@ The central tension is that end-to-end encryption and record-keeping pull in opp
 | ID | Request | Why | Compensating controls | Approvers |
 |---|---|---|---|---|
 | EXC-01 | Run a modified, firm-managed client that journals messages for the archive | End-to-end encryption prevents server-side capture (CON-01) | Separate compliance account; archive key usable only by the archive processor; two-person approval for human access; no plaintext stored outside the isolated account; annual penetration test of the client and archive | CISO, Chief Compliance Officer |
-| EXC-02 | Operate self-managed FoundationDB | No managed equivalent on AWS, and the current server requires it | Triple redundancy across three AZs, continuous backup to S3, DR cluster, runbooks and on-call cover | Platform engineering lead, CCoE |
+| EXC-02 | Operate self-managed FoundationDB | No managed equivalent on AWS, and the current server requires it | Triple redundancy across three AZs, continuous backup to S3, DR cluster, runbooks and on-call cover | Platform engineering lead, CGC |
 | EXC-03 | Maintain forks of AGPL-licensed components (client journaling, SSO registration, DynamoDB storage) | Needed for D2, D4 and D12 | Offer modified source to users as AGPL section 13 requires; merge upstream security fixes within 7 days | Legal, open-source program office |
 
 ## Risks and open items
