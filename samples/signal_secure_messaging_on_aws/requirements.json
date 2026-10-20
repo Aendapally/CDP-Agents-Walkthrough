@@ -220,34 +220,34 @@
       "category": "security",
       "statement": "Message content stays end-to-end encrypted; servers never handle plaintext",
       "target": "Zero plaintext message content in the production account",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-SEC-02",
       "category": "security",
       "statement": "All data at rest is encrypted with customer-managed keys; archive keys are controlled only by the compliance function",
       "target": "100% of stores use KMS customer-managed keys; archive key in a separate account",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-SEC-03",
       "category": "security",
       "statement": "Only MDM-managed, attested devices can register and connect",
       "target": "Device attestation on every registration",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-SEC-04",
       "category": "security",
       "statement": "Administrative access through SSO with MFA and no standing shell access",
       "target": "No SSH keys; Session Manager only; break-glass access audited",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-CMP-01",
       "category": "compliance",
       "statement": "Retain business communications, the first two years in an easily accessible place",
-      "target": "At least 3 years (regulatory minimum); firm policy 7 years",
+      "target": "7 years (the regulatory minimum is 3)",
       "source": "regulation",
       "reference": "SEC Rule 17a-4(b)(4)"
     },
@@ -272,14 +272,14 @@
       "category": "compliance",
       "statement": "Disappearing messages and deletions must not defeat capture",
       "target": "Capture happens before any client-side expiry",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-CMP-05",
       "category": "compliance",
       "statement": "Encryption export-control review for every country of operation",
       "target": "Legal sign-off per country before rollout",
-      "source": "org-policy",
+      "source": "regulation",
       "reference": "ECCN 5D002"
     },
     {
@@ -315,31 +315,31 @@
       "category": "operations",
       "statement": "Central logs, metrics and traces with no message content, keys or phone numbers in telemetry",
       "target": "Automated log scrubbing checks in CI",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-NET-01",
       "category": "networking",
       "statement": "Outbound traffic only to approved destinations",
       "target": "Egress allowlist: APNs, FCM, corporate IdP",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-DAT-01",
       "category": "data",
       "statement": "Message content stays in the firm's AWS accounts, except for exports to the approved surveillance platform",
       "target": "Exports only over private connectivity; no other third party receives message content",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-CST-01",
       "category": "cost",
       "statement": "Cost is visible per component and per environment",
       "target": "100% of resources tagged; monthly cost report per tier",
-      "source": "org-policy"
+      "source": "team-confirmed"
     }
   ],
-  "policy_conflicts": [
+  "conflicts": [
     {
       "id": "CON-01",
       "between": [
@@ -348,8 +348,7 @@
         "NFR-CMP-01"
       ],
       "summary": "End-to-end encryption means the servers cannot read messages, yet every business communication must be captured and retained.",
-      "proposed_resolution": "Capture at the endpoint: a firm-managed client build journals each sent and received message, encrypted to the archive's public key, into an isolated compliance account. Plaintext exists only on devices and inside the archive's controlled decryption step.",
-      "needs_exception": true
+      "proposed_resolution": "Capture at the endpoint: a firm-managed client build journals each sent and received message, encrypted to the archive's public key, into an isolated compliance account. Plaintext exists only on devices and inside the archive's controlled decryption step."
     },
     {
       "id": "CON-02",
@@ -358,8 +357,7 @@
         "NFR-CMP-04"
       ],
       "summary": "Signal supports disappearing messages and server-side expiry, which conflicts with retention.",
-      "proposed_resolution": "Disable disappearing messages through managed-client policy; journal messages at send and receive time.",
-      "needs_exception": false
+      "proposed_resolution": "Disable disappearing messages in the managed-client configuration; journal messages at send and receive time."
     },
     {
       "id": "CON-03",
@@ -368,8 +366,7 @@
         "NFR-DAT-01"
       ],
       "summary": "Upstream contact discovery and secure value recovery depend on Intel SGX enclaves, which AWS does not offer.",
-      "proposed_resolution": "Replace contact discovery with the firm directory (the user group is closed and the directory is known) and disable PIN-based recovery; managed devices are re-provisioned instead.",
-      "needs_exception": false
+      "proposed_resolution": "Replace contact discovery with the firm directory (the user group is closed and the directory is known) and disable PIN-based recovery; managed devices are re-provisioned instead."
     },
     {
       "id": "CON-04",
@@ -378,8 +375,7 @@
         "NFR-DAT-01"
       ],
       "summary": "The storage service persists to Google Cloud Bigtable, which would put group and sync data with a second cloud provider.",
-      "proposed_resolution": "Port the storage layer to DynamoDB.",
-      "needs_exception": false
+      "proposed_resolution": "Port the storage layer to DynamoDB."
     }
   ],
   "open_questions": [

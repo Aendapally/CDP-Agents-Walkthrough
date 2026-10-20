@@ -164,7 +164,7 @@
     {
       "id": "FR-05",
       "statement": "Only security-reviewed plugins and tools are available",
-      "source": "org-policy"
+      "source": "team-confirmed"
     }
   ],
   "non_functional_requirements": [
@@ -173,49 +173,49 @@
       "category": "security",
       "statement": "Models come only from Amazon Bedrock in the approved region; no traffic to other LLM APIs",
       "target": "100% of model calls through Bedrock VPC endpoints; other model providers disabled",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-SEC-02",
       "category": "security",
       "statement": "Single sign-on with MFA for every user, and prompt deprovisioning",
       "target": "Access removed within 1 hour of leaving",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-SEC-03",
       "category": "security",
       "statement": "Untrusted code runs with no credentials, no direct network access and resource limits",
       "target": "0 IAM permissions in the sandbox task; 15-second execution limit",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-SEC-04",
       "category": "security",
       "statement": "Prompts and responses are screened for PII and harmful content",
       "target": "Bedrock Guardrails on 100% of production apps",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-CMP-01",
       "category": "compliance",
       "statement": "Prompts, responses, tool calls and user identity are retained for audit and cannot be altered",
       "target": "1-year retention in WORM storage",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-NET-01",
       "category": "networking",
       "statement": "All outbound HTTP from the platform goes through an allowlisting proxy that blocks internal and metadata addresses",
       "target": "0 direct egress paths from application tasks",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-DAT-01",
       "category": "data",
       "statement": "Documents, embeddings and conversations stay in the region, encrypted with customer-managed keys",
       "target": "100% of stores use KMS customer-managed keys",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-AVL-01",
@@ -250,7 +250,7 @@
       "category": "cost",
       "statement": "Model spend is attributed to each team, with budgets",
       "target": "Monthly Bedrock cost per workspace; alert at 80% of budget",
-      "source": "org-policy"
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-DR-01",
@@ -260,7 +260,7 @@
       "source": "team-confirmed"
     }
   ],
-  "policy_conflicts": [
+  "conflicts": [
     {
       "id": "CON-01",
       "between": [
@@ -270,8 +270,7 @@
         "SIG-12"
       ],
       "summary": "SSO and per-team workspaces are required, but SSO is Enterprise-only and multi-workspace operation needs a commercial licence.",
-      "proposed_resolution": "License Dify Enterprise for SSO and multiple workspaces, subject to vendor risk assessment.",
-      "needs_exception": true
+      "proposed_resolution": "License Dify Enterprise for SSO and multiple workspaces, subject to vendor risk assessment."
     },
     {
       "id": "CON-02",
@@ -281,8 +280,7 @@
         "SIG-10"
       ],
       "summary": "Workflows run user-supplied code. In the AWS sample that code shares the API task's network namespace and IAM role.",
-      "proposed_resolution": "Run the sandbox as its own service in an isolated subnet with no task role; its only route out is the SSRF proxy.",
-      "needs_exception": true
+      "proposed_resolution": "Run the sandbox as its own service in an isolated subnet with no task role; its only route out is the SSRF proxy."
     },
     {
       "id": "CON-03",
@@ -291,8 +289,7 @@
         "NFR-SEC-03"
       ],
       "summary": "The agent backend's local shell sandbox gives agents a general-purpose shell.",
-      "proposed_resolution": "Leave the agent backend off at launch, and enable it after a dedicated security review.",
-      "needs_exception": false
+      "proposed_resolution": "Leave the agent backend off at launch, and enable it after a dedicated security review."
     }
   ],
   "open_questions": [
