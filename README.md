@@ -1,6 +1,6 @@
 # CDP-Agents Walkthrough (work version)
 
-> This version includes the company policy (`policy/policy_rule.md`) and internal names. The policy list and the policy IDs in the samples come from that file.
+> This version includes the company policy and internal names. `policy/policy_rule.md` lists every rule by its ID and text, the same rules as the policy list on the page. The policy IDs in the samples refer to those rules.
 
 An interactive walkthrough of the CDP-Agents architecture flow, from reading an application repository to a governed, provisioned cloud architecture. It includes three reference samples, one each for Signal, Sentry and Dify.
 
