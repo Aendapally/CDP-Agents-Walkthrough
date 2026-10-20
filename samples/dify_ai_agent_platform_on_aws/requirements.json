@@ -6,8 +6,7 @@
     "version": "1.0",
     "status": "ready-for-design",
     "created": "2026-10-08",
-    "produced_by": "Reference sample written in the Requirements Analyzer format (see ../README.md)",
-    "policy_basis": "Company policy rules from policy_rule.md (policy engine); policy_refs use its rule IDs."
+    "produced_by": "Reference sample written in the Requirements Analyzer format (see ../README.md)"
   },
   "application": {
     "name": "Dify",
@@ -174,10 +173,7 @@
       "category": "security",
       "statement": "Models come only from Amazon Bedrock in the approved region; no traffic to other LLM APIs",
       "target": "100% of model calls through Bedrock VPC endpoints; other model providers disabled",
-      "source": "org-policy",
-      "policy_refs": [
-        "REG-04"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-SEC-02",
@@ -191,10 +187,7 @@
       "category": "security",
       "statement": "Untrusted code runs with no credentials, no direct network access and resource limits",
       "target": "0 IAM permissions in the sandbox task; 15-second execution limit",
-      "source": "org-policy",
-      "policy_refs": [
-        "IAM-05"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-SEC-04",
@@ -208,32 +201,21 @@
       "category": "compliance",
       "statement": "Prompts, responses, tool calls and user identity are retained for audit and cannot be altered",
       "target": "1-year retention in WORM storage",
-      "source": "org-policy",
-      "policy_refs": [
-        "LOGP-05",
-        "LOGP-01"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-NET-01",
       "category": "networking",
       "statement": "All outbound HTTP from the platform goes through an allowlisting proxy that blocks internal and metadata addresses",
       "target": "0 direct egress paths from application tasks",
-      "source": "org-policy",
-      "policy_refs": [
-        "REG-03"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-DAT-01",
       "category": "data",
       "statement": "Documents, embeddings and conversations stay in the region, encrypted with customer-managed keys",
       "target": "100% of stores use KMS customer-managed keys",
-      "source": "org-policy",
-      "policy_refs": [
-        "DPE-01",
-        "DPE-06"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-AVL-01",
@@ -268,20 +250,14 @@
       "category": "cost",
       "statement": "Model spend is attributed to each team, with budgets",
       "target": "Monthly Bedrock cost per workspace; alert at 80% of budget",
-      "source": "org-policy",
-      "policy_refs": [
-        "TAG-02"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-DR-01",
       "category": "disaster-recovery",
       "statement": "Recover the platform in a second region from backups",
       "target": "RPO 15 minutes; RTO 4 hours",
-      "source": "team-confirmed",
-      "policy_refs": [
-        "COMP-06"
-      ]
+      "source": "team-confirmed"
     }
   ],
   "policy_conflicts": [
@@ -306,10 +282,7 @@
       ],
       "summary": "Workflows run user-supplied code. In the AWS sample that code shares the API task's network namespace and IAM role.",
       "proposed_resolution": "Run the sandbox as its own service in an isolated subnet with no task role; its only route out is the SSRF proxy.",
-      "needs_exception": true,
-      "policy_refs": [
-        "IAM-05"
-      ]
+      "needs_exception": true
     },
     {
       "id": "CON-03",
@@ -320,19 +293,6 @@
       "summary": "The agent backend's local shell sandbox gives agents a general-purpose shell.",
       "proposed_resolution": "Leave the agent backend off at launch, and enable it after a dedicated security review.",
       "needs_exception": false
-    },
-    {
-      "id": "CON-04",
-      "between": [
-        "FR-02",
-        "REG-04"
-      ],
-      "summary": "Platform email goes through Amazon SES, which is not in the approved service catalog.",
-      "proposed_resolution": "Request approval to use SES for outbound email only (EXC-03).",
-      "needs_exception": true,
-      "policy_refs": [
-        "REG-04"
-      ]
     }
   ],
   "open_questions": [

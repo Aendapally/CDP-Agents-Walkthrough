@@ -6,8 +6,7 @@
     "version": "1.0",
     "status": "ready-for-design",
     "created": "2026-10-08",
-    "produced_by": "Reference sample written in the Requirements Analyzer format (see ../README.md)",
-    "policy_basis": "Company policy rules from policy_rule.md (policy engine); policy_refs use its rule IDs."
+    "produced_by": "Reference sample written in the Requirements Analyzer format (see ../README.md)"
   },
   "application": {
     "name": "Signal Server and companion services",
@@ -221,22 +220,14 @@
       "category": "security",
       "statement": "Message content stays end-to-end encrypted; servers never handle plaintext",
       "target": "Zero plaintext message content in the production account",
-      "source": "org-policy",
-      "policy_refs": [
-        "DPE-03"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-SEC-02",
       "category": "security",
       "statement": "All data at rest is encrypted with customer-managed keys; archive keys are controlled only by the compliance function",
       "target": "100% of stores use KMS customer-managed keys; archive key in a separate account",
-      "source": "org-policy",
-      "policy_refs": [
-        "DPE-01",
-        "DPE-02",
-        "IAM-07"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-SEC-03",
@@ -250,13 +241,7 @@
       "category": "security",
       "statement": "Administrative access through SSO with MFA and no standing shell access",
       "target": "No SSH keys; Session Manager only; break-glass access audited",
-      "source": "org-policy",
-      "policy_refs": [
-        "IAM-01",
-        "IAM-02",
-        "IAM-03",
-        "BB_AWS0137"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-CMP-01",
@@ -309,10 +294,7 @@
       "category": "disaster-recovery",
       "statement": "Recover messaging in a second region after a regional outage",
       "target": "RPO 5 minutes for accounts and keys; RTO 1 hour",
-      "source": "team-confirmed",
-      "policy_refs": [
-        "COMP-06"
-      ]
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-PRF-01",
@@ -333,43 +315,28 @@
       "category": "operations",
       "statement": "Central logs, metrics and traces with no message content, keys or phone numbers in telemetry",
       "target": "Automated log scrubbing checks in CI",
-      "source": "org-policy",
-      "policy_refs": [
-        "LOGP-01",
-        "LOGP-09",
-        "CSPLOG-01"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-NET-01",
       "category": "networking",
       "statement": "Outbound traffic only to approved destinations",
       "target": "Egress allowlist: APNs, FCM, corporate IdP",
-      "source": "org-policy",
-      "policy_refs": [
-        "REG-03"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-DAT-01",
       "category": "data",
       "statement": "Message content stays in the firm's AWS accounts, except for exports to the approved surveillance platform",
       "target": "Exports only over private connectivity; no other third party receives message content",
-      "source": "org-policy",
-      "policy_refs": [
-        "REG-01",
-        "DPE-06"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-CST-01",
       "category": "cost",
       "statement": "Cost is visible per component and per environment",
       "target": "100% of resources tagged; monthly cost report per tier",
-      "source": "org-policy",
-      "policy_refs": [
-        "TAG-02"
-      ]
+      "source": "org-policy"
     }
   ],
   "policy_conflicts": [
@@ -402,10 +369,7 @@
       ],
       "summary": "Upstream contact discovery and secure value recovery depend on Intel SGX enclaves, which AWS does not offer.",
       "proposed_resolution": "Replace contact discovery with the firm directory (the user group is closed and the directory is known) and disable PIN-based recovery; managed devices are re-provisioned instead.",
-      "needs_exception": false,
-      "policy_refs": [
-        "COMP-03"
-      ]
+      "needs_exception": false
     },
     {
       "id": "CON-04",
@@ -415,23 +379,7 @@
       ],
       "summary": "The storage service persists to Google Cloud Bigtable, which would put group and sync data with a second cloud provider.",
       "proposed_resolution": "Port the storage layer to DynamoDB.",
-      "needs_exception": false,
-      "policy_refs": [
-        "DPE-06"
-      ]
-    },
-    {
-      "id": "CON-05",
-      "between": [
-        "FR-02",
-        "BB_AWS0206"
-      ],
-      "summary": "Group calls need UDP media ports from the internet, but company policy allows only ports 80 and 443 from the internet.",
-      "proposed_resolution": "Request an exception for the SFU and TURN media ports (EXC-04), with TURN over TLS on 443 as the fallback for networks that block UDP.",
-      "needs_exception": true,
-      "policy_refs": [
-        "BB_AWS0206"
-      ]
+      "needs_exception": false
     }
   ],
   "open_questions": [

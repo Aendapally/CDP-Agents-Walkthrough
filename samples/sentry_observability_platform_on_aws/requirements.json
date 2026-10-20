@@ -6,8 +6,7 @@
     "version": "1.0",
     "status": "ready-for-design",
     "created": "2026-10-08",
-    "produced_by": "Reference sample written in the Requirements Analyzer format (see ../README.md)",
-    "policy_basis": "Company policy rules from policy_rule.md (policy engine); policy_refs use its rule IDs."
+    "produced_by": "Reference sample written in the Requirements Analyzer format (see ../README.md)"
   },
   "application": {
     "name": "Sentry (self-hosted)",
@@ -238,34 +237,21 @@
       "category": "data",
       "statement": "Telemetry expires automatically",
       "target": "Errors 90 days; spans, replays and profiles 30 days",
-      "source": "org-policy",
-      "policy_refs": [
-        "BB_AWS01471"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-SEC-01",
       "category": "security",
       "statement": "Telemetry and backups stay in EU regions, encrypted with customer-managed keys",
       "target": "100% of stores use KMS customer-managed keys; 0 non-EU copies",
-      "source": "org-policy",
-      "policy_refs": [
-        "DPE-01",
-        "DPE-02",
-        "REG-01",
-        "DPE-06"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-SEC-02",
       "category": "security",
       "statement": "PII is scrubbed before anything is stored",
       "target": "Default and custom scrubbing rules enforced at Relay for 100% of projects",
-      "source": "org-policy",
-      "policy_refs": [
-        "LOGP-09",
-        "LOGP-10"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-SEC-03",
@@ -286,43 +272,28 @@
       "category": "networking",
       "statement": "Internal SDK traffic stays private; only browser and mobile telemetry uses a public endpoint",
       "target": "100% of internal producers on PrivateLink",
-      "source": "org-policy",
-      "policy_refs": [
-        "BB_AWS0206",
-        "DPE-05"
-      ]
+      "source": "org-policy"
     },
     {
       "id": "NFR-OPS-01",
       "category": "operations",
       "statement": "Kafka consumer lag drives alerting and autoscaling",
       "target": "Alert when any consumer group lags more than 5 minutes",
-      "source": "team-confirmed",
-      "policy_refs": [
-        "CSPLOG-01",
-        "LOGP-01",
-        "MON-02"
-      ]
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-CST-01",
       "category": "cost",
       "statement": "Storage cost is controlled with tiering and expiry",
       "target": "ClickHouse data older than 7 days moves to S3; cost per million events reported monthly",
-      "source": "team-confirmed",
-      "policy_refs": [
-        "TAG-02"
-      ]
+      "source": "team-confirmed"
     },
     {
       "id": "NFR-DR-01",
       "category": "disaster-recovery",
       "statement": "Recover from regional loss using backups held in another EU region",
       "target": "RPO 15 minutes for metadata, 24 hours for analytics; RTO 4 hours",
-      "source": "team-confirmed",
-      "policy_refs": [
-        "COMP-06"
-      ]
+      "source": "team-confirmed"
     }
   ],
   "policy_conflicts": [
@@ -334,10 +305,7 @@
       ],
       "summary": "ClickHouse has no AWS-managed equivalent inside the firm's accounts, and the hosted ClickHouse service would move telemetry out of them.",
       "proposed_resolution": "Self-manage ClickHouse on EKS with the Altinity operator, S3 tiered storage and automated backups.",
-      "needs_exception": true,
-      "policy_refs": [
-        "COMP-03"
-      ]
+      "needs_exception": true
     },
     {
       "id": "CON-02",
@@ -345,13 +313,9 @@
         "FR-01",
         "NFR-NET-01"
       ],
-      "summary": "Browser and mobile SDKs must reach an internet-facing endpoint.",
-      "proposed_resolution": "Permitted by company policy: only Relay is exposed, on HTTPS port 443 (BB_AWS0206), and every event is authenticated with a per-project DSN key (DPE-05). Internal producers use PrivateLink.",
-      "needs_exception": false,
-      "policy_refs": [
-        "BB_AWS0206",
-        "DPE-05"
-      ]
+      "summary": "Browser and mobile SDKs must reach an internet-facing endpoint, while firm policy discourages public data endpoints.",
+      "proposed_resolution": "Internet-facing ingest only for Relay, behind AWS WAF with rate limits and per-project DSN keys; all internal traffic over PrivateLink.",
+      "needs_exception": true
     },
     {
       "id": "CON-03",
@@ -362,19 +326,6 @@
       "summary": "Sentry's producer allows 50 MB messages, which is above common broker defaults.",
       "proposed_resolution": "Raise message.max.bytes in the MSK configuration to match, and load-test the largest attachment and replay sizes before go-live.",
       "needs_exception": false
-    },
-    {
-      "id": "CON-04",
-      "between": [
-        "FR-02",
-        "REG-04"
-      ],
-      "summary": "Alert email goes through Amazon SES, which is not in the approved service catalog.",
-      "proposed_resolution": "Request approval to use SES for outbound notification email only (EXC-02).",
-      "needs_exception": true,
-      "policy_refs": [
-        "REG-04"
-      ]
     }
   ],
   "open_questions": [
