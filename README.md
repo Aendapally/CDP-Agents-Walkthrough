@@ -1,6 +1,6 @@
 # CDP-Agents Walkthrough (work version)
 
-> This version includes the company policy and internal names. `policy/policy_rule.md` lists every rule by its ID and text, the same rules as the policy list on the page. The policy IDs in the samples refer to those rules.
+> This version includes the organization policy and internal names. `policy/policy_rule.md` lists every rule by its ID and text, the same rules as the policy list on the page. The policy IDs in the samples refer to those rules.
 
 An interactive walkthrough of the CDP-Agents architecture flow, from reading an application repository to a governed, provisioned cloud architecture. It includes three reference samples, one each for Signal, Sentry and Dify.
 
@@ -39,7 +39,7 @@ Whether Pages is available for private repositories, and who can view the site, 
 | Click a box | Jump to the step where it appears |
 | Click an artifact in the green column | Open its sample |
 | **Sample artifacts** | Open the viewer; switch between Signal, Sentry and Dify at the top |
-| **Policy** | Open the company policy list: company rules, approved regions, approved services and selection guidance. Policy IDs in the architecture summaries open it at that rule. |
+| **Policy** | Open the organization policy list: organization rules, approved regions, approved services and selection guidance. Policy IDs in the architecture summaries open it at that rule. |
 | **Zoom to step** | Follow the active step; turn it off to show the whole diagram |
 | **Auto-play** | Advance every 8 seconds |
 

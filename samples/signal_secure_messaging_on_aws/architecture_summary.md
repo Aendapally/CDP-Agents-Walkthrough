@@ -4,21 +4,21 @@
 
 ## Overview
 
-A regulated broker-dealer wants a sanctioned secure messenger for its 25,000 employees, so that business conversations stop moving to consumer apps that compliance cannot see. This design self-hosts the open-source Signal stack on AWS as a closed, firm-only service. It keeps Signal's end-to-end encryption and adds what a regulated firm needs on top: identity tied to the corporate directory, capture of every business communication into a write-once archive, and a warm standby region.
+A regulated broker-dealer wants a sanctioned secure messenger for its 25,000 employees, so that business conversations stop moving to consumer apps that compliance cannot see. This design self-hosts the open-source Signal stack on AWS as a closed, Org-only service. It keeps Signal's end-to-end encryption and adds what a regulated organization needs on top: identity tied to the Org directory, capture of every business communication into a write-once archive, and a warm standby region.
 
-The central tension is that end-to-end encryption and record-keeping pull in opposite directions. The servers never see plaintext, so the firm cannot capture messages on the server. The design resolves this at the endpoint and isolates everything that can decrypt the archive in a separate AWS account.
+The central tension is that end-to-end encryption and record-keeping pull in opposite directions. The servers never see plaintext, so the organization cannot capture messages on the server. The design resolves this at the endpoint and isolates everything that can decrypt the archive in a separate AWS account.
 
 ## Scope and assumptions
 
 - 25,000 employees, up to three linked devices each; peak 20,000 concurrent connections; 2 million messages per day.
 - Closed user group: only employees register, and the service does not federate with the public Signal network.
-- Every device is enrolled in the firm's mobile device management.
+- Every device is enrolled in the organization's mobile device management.
 - Consumer payments, donations and billing are out of scope. So is call recording, so calling is disabled for roles subject to call-taping rules.
 
 ## Architecture at a glance
 
 - **Edge:** Route 53 failover records; an Application Load Balancer for WebSocket and gRPC traffic behind AWS WAF and Shield Advanced; CloudFront for attachment downloads; a UDP Network Load Balancer for group calls.
-- **Services (Amazon EKS, private subnets, three AZs):** chat (Signal-Server), registration, storage, key transparency, the firm directory and the attachment upload (tus) service.
+- **Services (Amazon EKS, private subnets, three AZs):** chat (Signal-Server), registration, storage, key transparency, the Org directory and the attachment upload (tus) service.
 - **Calling:** the group-call SFU (Signal-Calling-Service) and TURN relays on EC2 in public subnets.
 - **Data:** DynamoDB (34 tables), ElastiCache for Redis (five endpoints), FoundationDB on EC2 for message queues, and S3 for attachments, prekeys and dynamic configuration.
 - **Compliance account:** capture API, SQS FIFO buffer, archive processor, S3 Object Lock archive and a CloudHSM-backed archive key.
@@ -26,13 +26,13 @@ The central tension is that end-to-end encryption and record-keeping pull in opp
 
 ## Key decisions
 
-"Grounded in" lists the company policy rules each decision follows, by their ID in `policy_rule.md`: company rules (for example `DPE-01`), approved services (`svc:…`) and AWS selection guidance (`guidance:…`). "Signals" lists what the code scan found.
+"Grounded in" lists the organization policy rules each decision follows, by their ID in `policy_rule.md`: organization rules (for example `DPE-01`), approved services (`svc:…`) and AWS selection guidance (`guidance:…`). "Signals" lists what the code scan found.
 
 | # | Decision | Satisfies | Grounded in (policy) | Signals | Alternatives considered |
 |---|---|---|---|---|---|
 | D1 | Run the open-source stack as a closed deployment on Amazon EKS across three AZs | FR-01, FR-04, NFR-AVL-01 | `svc:containers:amazon-elastic-kubernetes-service`, `guidance:containers:orchestration`, `COMP-01`, `COMP-05` | SIG-01; component inventory | ECS on Fargate is viable. EKS runs seven services and their autoscaling on one platform. |
-| D2 | Capture at the endpoint: a firm-managed client journals each sent and received message, encrypted to the archive key, into an isolated compliance account. Records land in S3 Object Lock (compliance mode, 7 years). Only the archive processor's role can use the CloudHSM-backed key. | FR-05, FR-06, NFR-CMP-01 to 04, NFR-SEC-02 | `DPE-01`, `DPE-02`, `REG-04`, `svc:security-identity-and-compliance:aws-cloudhsm`, `svc:storage:amazon-simple-storage-service` | CON-01; SEC Rule 17a-4 | Server-side capture is impossible with end-to-end encryption. A third-party archiving fork of Signal was rejected: in 2025 one such product was breached and its archive server held plaintext copies. |
-| D3 | Replace SGX-based contact discovery with a firm directory service fed by SCIM, and disable PIN-based secure value recovery | FR-07, NFR-DAT-01 | `COMP-03`, `REG-01` | SIG-08, CON-03 | Port the enclave services to AWS Nitro Enclaves. This takes significant effort; revisit if the user group opens up. |
+| D2 | Capture at the endpoint: an Org-managed client journals each sent and received message, encrypted to the archive key, into an isolated compliance account. Records land in S3 Object Lock (compliance mode, 7 years). Only the archive processor's role can use the CloudHSM-backed key. | FR-05, FR-06, NFR-CMP-01 to 04, NFR-SEC-02 | `DPE-01`, `DPE-02`, `REG-04`, `svc:security-identity-and-compliance:aws-cloudhsm`, `svc:storage:amazon-simple-storage-service` | CON-01; SEC Rule 17a-4 | Server-side capture is impossible with end-to-end encryption. A third-party archiving fork of Signal was rejected: in 2025 one such product was breached and its archive server held plaintext copies. |
+| D3 | Replace SGX-based contact discovery with an Org directory service fed by SCIM, and disable PIN-based secure value recovery | FR-07, NFR-DAT-01 | `COMP-03`, `REG-01` | SIG-08, CON-03 | Port the enclave services to AWS Nitro Enclaves. This takes significant effort; revisit if the user group opens up. |
 | D4 | Port the storage service from Google Cloud Bigtable to DynamoDB | NFR-DAT-01 | `svc:databases:amazon-dynamodb`, `guidance:databases:key-value`, `DPE-06` | SIG-09, CON-04 | Keep Bigtable over a cross-cloud link. That adds a second provider and a data-residency review. |
 | D5 | DynamoDB on demand with point-in-time recovery for accounts, keys and profiles; global tables to Region B | NFR-DR-01, NFR-SCL-01 | `svc:databases:amazon-dynamodb`, `guidance:databases:key-value`, `COMP-06`, `DPE-01` | SIG-02 | Aurora PostgreSQL would mean rewriting the data layer. |
 | D6 | FoundationDB on EC2 i4i instances (local NVMe) across three AZs in triple-redundancy mode, with asynchronous DR replication to Region B Self-managed, so it needs exception EXC-02. | NFR-AVL-01, NFR-DR-01 | `svc:compute:amazon-ec2`, `COMP-01`, `INIT-VM-01`, `COMP-06` | SIG-04 | The DynamoDB `messages` table that still appears in the config. The current server build requires FoundationDB. |
@@ -41,7 +41,7 @@ The central tension is that end-to-end encryption and record-keeping pull in opp
 | D9 | Route 53 failover; an ALB for WebSocket and gRPC behind WAF and Shield Advanced; a UDP NLB for the SFU; TURN relays on EC2 with Elastic IPs UDP media ports need exception EXC-04. | FR-02, NFR-AVL-01 | `guidance:compute:elastic-load-balancing`, `BB_AWS0125`, `svc:security-identity-and-compliance:aws-waf`, `BB_AWS0206` | SIG-01, SIG-11 | Cloudflare TURN as upstream, which puts a third party in the media path. |
 | D10 | Remove consumer monetisation: Stripe, Braintree, app-store billing, MobileCoin and donations are not deployed | NFR-DAT-01 | `REG-04` | SIG-10 | None |
 | D11 | Egress only through AWS Network Firewall with a domain allowlist (APNs, FCM, the IdP); VPC endpoints for AWS services | NFR-NET-01 | `svc:security-identity-and-compliance:aws-network-firewall`, `guidance:networking-and-content-delivery:network-security-and-remote-access`, `svc:networking-and-content-delivery:aws-privatelink`, `REG-03` | SIG-07 | Open NAT egress |
-| D12 | Registration gated by corporate SSO (OIDC), with SCIM-driven deprovisioning within 15 minutes | FR-04, NFR-SEC-03 | — | Registration service in the component inventory | SMS-only verification as upstream |
+| D12 | Registration gated by Org SSO (OIDC), with SCIM-driven deprovisioning within 15 minutes | FR-04, NFR-SEC-03 | — | Registration service in the component inventory | SMS-only verification as upstream |
 | D13 | Warm standby in Region B with Route 53 failover | NFR-DR-01 | `COMP-06`, `REG-01`, `DPE-06` | NFR-DR-01 targets | Active-active. FoundationDB queues and the Redis message cache make multi-writer complex. |
 
 ## How a message flows
@@ -65,10 +65,10 @@ The central tension is that end-to-end encryption and record-keeping pull in opp
 
 | ID | Request | Policy | Why | Compensating controls | Approvers |
 |---|---|---|---|---|---|
-| EXC-01 | Run a modified, firm-managed client that journals messages for the archive | `COMP-03` | End-to-end encryption prevents server-side capture (CON-01) | Separate compliance account; archive key usable only by the archive processor; two-person approval for human access; no plaintext stored outside the isolated account; annual penetration test of the client and archive | CISO, Chief Compliance Officer |
+| EXC-01 | Run a modified, Org-managed client that journals messages for the archive | `COMP-03` | End-to-end encryption prevents server-side capture (CON-01) | Separate compliance account; archive key usable only by the archive processor; two-person approval for human access; no plaintext stored outside the isolated account; annual penetration test of the client and archive | CISO, Chief Compliance Officer |
 | EXC-02 | Operate self-managed FoundationDB | `COMP-03` | No managed equivalent on AWS, and the current server requires it | Triple redundancy across three AZs, continuous backup to S3, DR cluster, runbooks and on-call cover | Platform engineering lead, CGC |
 | EXC-03 | Maintain forks of AGPL-licensed components (client journaling, SSO registration, DynamoDB storage) | — | Needed for D2, D4 and D12 | Offer modified source to users as AGPL section 13 requires; merge upstream security fixes within 7 days | Legal, open-source program office |
-| EXC-04 | Allow UDP media from the internet to the group-call SFU and TURN relays | `BB_AWS0206` | Calls need UDP media ports, and company policy allows only ports 80 and 443 from the internet | Open only the SFU and TURN media port ranges, behind Shield Advanced; short-lived TURN credentials; TURN over TLS on 443 as the fallback for networks that block UDP | CISO, CGC |
+| EXC-04 | Allow UDP media from the internet to the group-call SFU and TURN relays | `BB_AWS0206` | Calls need UDP media ports, and organization policy allows only ports 80 and 443 from the internet | Open only the SFU and TURN media port ranges, behind Shield Advanced; short-lived TURN credentials; TURN over TLS on 443 as the fallback for networks that block UDP | CISO, CGC |
 
 ## Risks and open items
 
@@ -84,4 +84,4 @@ The central tension is that end-to-end encryption and record-keeping pull in opp
 - Companion services: [registration-service](https://github.com/signalapp/registration-service), [storage-service](https://github.com/signalapp/storage-service), [key-transparency-server](https://github.com/signalapp/key-transparency-server), [Signal-Calling-Service](https://github.com/signalapp/Signal-Calling-Service), [ContactDiscoveryService-Icelake](https://github.com/signalapp/ContactDiscoveryService-Icelake), [SecureValueRecovery2](https://github.com/signalapp/SecureValueRecovery2)
 - [SEC Rule 17a-4](https://www.ecfr.gov/current/title-17/section-240.17a-4), [FINRA Rule 3110](https://www.finra.org/rules-guidance/rulebooks/finra-rules/3110), [FINRA Rule 4511](https://www.finra.org/rules-guidance/rulebooks/finra-rules/4511)
 - [TechCrunch: TeleMessage, a modified Signal clone used by US government officials, has been hacked (May 2025)](https://techcrunch.com/2025/05/05/telemessage-a-modified-signal-clone-used-by-us-government-officials-has-been-hacked/)
-- Company policy: `policy_rule.md` from the policy engine (company paved-path document, AWS service catalog, AWS decision guides)
+- Organization policy: `policy_rule.md` from the policy engine (organization paved-path document, AWS service catalog, AWS decision guides)

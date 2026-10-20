@@ -4,7 +4,7 @@
 
 ## Overview
 
-An engineering organisation with 3,000 engineers and 2,500 projects wants Sentry for errors, tracing, replays and profiling. The telemetry carries customer data and source context, so it must stay in the firm's own AWS accounts and in EU regions. Sentry's self-hosted package is a single-host Docker Compose stack of 53 services, and upstream describes it as suited to "low-volume deployments and proofs-of-concept". This design turns that topology into a production platform that absorbs 25,000 events per second during incident storms without losing accepted events.
+An engineering organisation with 3,000 engineers and 2,500 projects wants Sentry for errors, tracing, replays and profiling. The telemetry carries customer data and source context, so it must stay in the organization's own AWS accounts and in EU regions. Sentry's self-hosted package is a single-host Docker Compose stack of 53 services, and upstream describes it as suited to "low-volume deployments and proofs-of-concept". This design turns that topology into a production platform that absorbs 25,000 events per second during incident storms without losing accepted events.
 
 The design follows the stack's own data path: Relay authenticates and scrubs events at the edge, Kafka buffers everything, and consumers fan the data out to ClickHouse for search, S3 for raw payloads and files, and PostgreSQL for issue metadata.
 
@@ -12,7 +12,7 @@ The design follows the stack's own data path: Relay authenticates and scrubs eve
 
 - 5,000 events per second sustained, 25,000 per second for up to 30 minutes, and about 2 TB per month of attachments, replays and profiles.
 - One EU region in production; backups are copied to a second EU region.
-- Single-organisation install (`SENTRY_SINGLE_ORGANIZATION`), with teams mapped from the corporate IdP.
+- Single-organisation install (`SENTRY_SINGLE_ORGANIZATION`), with teams mapped from the Org IdP.
 - SaaS-only Sentry features and multi-region active-active operation are out of scope.
 
 ## Architecture at a glance
@@ -28,20 +28,20 @@ The design follows the stack's own data path: Relay authenticates and scrubs eve
 
 ## Key decisions
 
-"Grounded in" lists the company policy rules each decision follows, by their ID in `policy_rule.md`: company rules (for example `DPE-01`), approved services (`svc:…`) and AWS selection guidance (`guidance:…`). "Signals" lists what the code scan found.
+"Grounded in" lists the organization policy rules each decision follows, by their ID in `policy_rule.md`: organization rules (for example `DPE-01`), approved services (`svc:…`) and AWS selection guidance (`guidance:…`). "Signals" lists what the code scan found.
 
 | # | Decision | Satisfies | Grounded in (policy) | Signals | Alternatives considered |
 |---|---|---|---|---|---|
 | D1 | Run the services on Amazon EKS, with Karpenter for nodes and KEDA scaling consumers on Kafka lag | NFR-SCL-01, NFR-OPS-01 | `svc:containers:amazon-elastic-kubernetes-service`, `guidance:containers:orchestration`, `COMP-01`, `COMP-05` | SIG-01 | ECS on Fargate handles the stateless services well, but ClickHouse needs StatefulSets and the operator. One platform is simpler to run. |
 | D2 | Two ingest paths: a public ALB with AWS WAF for browser and mobile SDKs, and a PrivateLink endpoint service for internal producers | FR-06, NFR-NET-01 | `BB_AWS0206`, `DPE-05`, `svc:security-identity-and-compliance:aws-waf`, `svc:networking-and-content-delivery:aws-privatelink` | CON-02 | Route all traffic over the internet (rejected by policy) |
 | D3 | Relay as the only writer to Kafka, enforcing DSN auth, quotas and PII scrubbing before data is stored | NFR-SEC-02, NFR-SCL-01 | `LOGP-09`, `LOGP-10` | Relay component; SIG-07 | Scrubbing after storage would mean PII lands on disk first |
-| D4 | Amazon MSK provisioned across three AZs: replication factor 3, min in-sync replicas 2, producer acks=all, message size raised to match Sentry's 50 MB setting | NFR-DUR-01, NFR-AVL-01 | `svc:analytics:amazon-managed-streaming-for-apache-kafka-amazon-msk`, `guidance:analytics:apache-kafka-processing-of-streaming-data`, `DPE-03` | SIG-02, CON-03 | Self-managed Kafka on EKS (more to operate, and firm policy prefers managed) |
-| D5 | Self-managed ClickHouse on EKS with the Altinity operator: shards with two replicas across AZs, three Keeper nodes, data older than 7 days moved to S3, TTL-based retention Self-managed, so it needs exception EXC-01. | NFR-PRF-02, NFR-RET-01, NFR-CST-01 | `COMP-03`, `svc:containers:amazon-elastic-kubernetes-service`, `svc:storage:amazon-simple-storage-service` | SIG-03, CON-01 | Hosted ClickHouse service (telemetry would leave the firm's accounts); EC2 without an operator (more manual work) |
+| D4 | Amazon MSK provisioned across three AZs: replication factor 3, min in-sync replicas 2, producer acks=all, message size raised to match Sentry's 50 MB setting | NFR-DUR-01, NFR-AVL-01 | `svc:analytics:amazon-managed-streaming-for-apache-kafka-amazon-msk`, `guidance:analytics:apache-kafka-processing-of-streaming-data`, `DPE-03` | SIG-02, CON-03 | Self-managed Kafka on EKS (more to operate, and Org policy prefers managed) |
+| D5 | Self-managed ClickHouse on EKS with the Altinity operator: shards with two replicas across AZs, three Keeper nodes, data older than 7 days moved to S3, TTL-based retention Self-managed, so it needs exception EXC-01. | NFR-PRF-02, NFR-RET-01, NFR-CST-01 | `COMP-03`, `svc:containers:amazon-elastic-kubernetes-service`, `svc:storage:amazon-simple-storage-service` | SIG-03, CON-01 | Hosted ClickHouse service (telemetry would leave the organization's accounts); EC2 without an operator (more manual work) |
 | D6 | Aurora PostgreSQL (Multi-AZ, Graviton) behind RDS Proxy instead of PgBouncer | NFR-AVL-01, NFR-DR-01 | `svc:databases:amazon-aurora`, `guidance:databases:relational`, `BB_AWS0204`, `DPE-01` | SIG-04 | Self-managed PostgreSQL on EKS |
 | D7 | Raw event payloads (nodestore) and all files (attachments, replays, profiles, debug files) in S3, with lifecycle expiry at 90 and 30 days | NFR-RET-01, NFR-CST-01 | `svc:storage:amazon-simple-storage-service`, `guidance:storage:object`, `BB_AWS01471`, `BB_AWS0155` | SIG-05, SIG-06, SIG-09 | Nodestore in PostgreSQL, which upstream moved away from because it did not scale |
 | D8 | ElastiCache for Redis OSS (Multi-AZ) for quotas, rate limits, buffers and digests; ElastiCache for Memcached for the Django cache | NFR-PRF-01, NFR-AVL-01 | `svc:databases:amazon-elasticache`, `guidance:databases:in-memory`, `DPE-03` | SIG-07, SIG-08 | A single Redis for everything, which mixes cache evictions with quota state |
 | D9 | The Kafka-backed taskbroker and task workers handle background work, with no separate message broker | NFR-SCL-01 | `svc:analytics:amazon-managed-streaming-for-apache-kafka-amazon-msk`, `guidance:application-integration:streaming` | SIG-10 | Celery with RabbitMQ (no longer the upstream path) |
-| D10 | SAML SSO with the corporate IdP; email through Amazon SES; Slack, PagerDuty and Jira reached only through the Network Firewall allowlist Amazon SES is not in the approved service catalog, so it needs exception EXC-02. | FR-02, FR-05, NFR-SEC-03 | `REG-03`, `svc:security-identity-and-compliance:aws-network-firewall` | SIG-12, SIG-14 | Local accounts and open egress |
+| D10 | SAML SSO with the Org IdP; email through Amazon SES; Slack, PagerDuty and Jira reached only through the Network Firewall allowlist Amazon SES is not in the approved service catalog, so it needs exception EXC-02. | FR-02, FR-05, NFR-SEC-03 | `REG-03`, `svc:security-identity-and-compliance:aws-network-firewall` | SIG-12, SIG-14 | Local accounts and open egress |
 | D11 | All stores encrypted with customer-managed KMS keys; one production region; backups copied only to another EU region | NFR-SEC-01, NFR-DR-01 | `DPE-01`, `DPE-02`, `REG-01`, `DPE-06`, `COMP-06` | Scenario | Cross-region replicas of live data (more cost, with no matching RTO need) |
 | D12 | Platform self-monitoring: CloudWatch Container Insights, MSK consumer-lag alarms, StatsD metrics through the CloudWatch agent | NFR-OPS-01 | `CSPLOG-01`, `CSPLOG-02`, `LOGP-01`, `MON-02`, `WLOG-01` | SIG-13 | Monitoring Sentry with Sentry (it fails at the same moment) |
 
@@ -66,10 +66,10 @@ The design follows the stack's own data path: Relay authenticates and scrubs eve
 
 | ID | Request | Policy | Why | Compensating controls | Approvers |
 |---|---|---|---|---|---|
-| EXC-01 | Operate self-managed ClickHouse | `COMP-03` | No managed option inside the firm's accounts (CON-01) | Altinity operator, replicas across AZs, nightly backups to S3 with cross-region copy, restore tested quarterly, on-call runbooks | Platform engineering lead, CGC |
+| EXC-01 | Operate self-managed ClickHouse | `COMP-03` | No managed option inside the organization's accounts (CON-01) | Altinity operator, replicas across AZs, nightly backups to S3 with cross-region copy, restore tested quarterly, on-call runbooks | Platform engineering lead, CGC |
 | EXC-02 | Use Amazon SES for alert email | `REG-04` | SES is not in the approved service catalog, and accounts are restricted to approved services | Outbound notification email only, from one verified domain with SPF and DKIM; no inbound mail; sending limited to the alerts identity | Platform engineering lead, CGC |
 
-The public ingest endpoint needs no exception: company policy allows ports 80 and 443 from the internet (`BB_AWS0206`) and requires authentication before data is reachable (`DPE-05`). Relay serves HTTPS on 443 and authenticates every event with a per-project DSN key.
+The public ingest endpoint needs no exception: organization policy allows ports 80 and 443 from the internet (`BB_AWS0206`) and requires authentication before data is reachable (`DPE-05`). Relay serves HTTPS on 443 and authenticates every event with a per-project DSN key.
 
 The FSL-1.1 licence permits internal use. Legal sign-off is tracked as NFR-CMP-01 rather than as an exception.
 
@@ -85,4 +85,4 @@ The FSL-1.1 licence permits internal use. Legal sign-off is tracked as NFR-CMP-0
 - getsentry/self-hosted at commit `d09ff0cd592f`: [docker-compose.yml](https://github.com/getsentry/self-hosted/blob/master/docker-compose.yml), [sentry.conf.example.py](https://github.com/getsentry/self-hosted/blob/master/sentry/sentry.conf.example.py), [config.example.yml](https://github.com/getsentry/self-hosted/blob/master/sentry/config.example.yml), [LICENSE.md](https://github.com/getsentry/self-hosted/blob/master/LICENSE.md)
 - Components: [relay](https://github.com/getsentry/relay), [sentry](https://github.com/getsentry/sentry), [snuba](https://github.com/getsentry/snuba), [symbolicator](https://github.com/getsentry/symbolicator), [vroom](https://github.com/getsentry/vroom), [taskbroker](https://github.com/getsentry/taskbroker), [uptime-checker](https://github.com/getsentry/uptime-checker)
 - [Sentry developer docs: nodestore](https://develop.sentry.dev/backend/application-domains/nodestore/)
-- Company policy: `policy_rule.md` from the policy engine (company paved-path document, AWS service catalog, AWS decision guides)
+- Organization policy: `policy_rule.md` from the policy engine (organization paved-path document, AWS service catalog, AWS decision guides)

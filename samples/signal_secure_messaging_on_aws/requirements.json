@@ -2,7 +2,7 @@
   "$schema": "cdp/requirements/v0",
   "document": {
     "id": "REQ-SIGNAL-001",
-    "title": "Signal secure messaging for a regulated financial firm",
+    "title": "Signal secure messaging for a regulated financial organization",
     "version": "1.0",
     "status": "ready-for-design",
     "created": "2026-10-08",
@@ -129,7 +129,7 @@
         "id": "SIG-12",
         "signal": "OpenTelemetry export for logs and traces",
         "evidence": "service/config/sample.yml: logging.appenders[type: otlp], openTelemetry",
-        "implies": "OTel collector feeding the firm's monitoring stack"
+        "implies": "OTel collector feeding the organization's monitoring stack"
       },
       {
         "id": "SIG-13",
@@ -164,7 +164,7 @@
       "Peak 20,000 concurrent WebSocket connections and 2 million messages per day",
       "Attachments up to 100 MB",
       "Closed user group: only employees can register; no federation with the public Signal network",
-      "All devices are enrolled in the firm's mobile device management"
+      "All devices are enrolled in the organization's mobile device management"
     ],
     "out_of_scope": [
       "Consumer payments, donations and subscription billing",
@@ -190,12 +190,12 @@
     },
     {
       "id": "FR-04",
-      "statement": "Only active employees can register, using their corporate identity; leavers lose access within 15 minutes",
+      "statement": "Only active employees can register, using their Org identity; leavers lose access within 15 minutes",
       "source": "team-confirmed"
     },
     {
       "id": "FR-05",
-      "statement": "Capture every message, edit, deletion, attachment and call record of in-scope employees into the firm's archive",
+      "statement": "Capture every message, edit, deletion, attachment and call record of in-scope employees into the organization's archive",
       "source": "regulation"
     },
     {
@@ -205,7 +205,7 @@
     },
     {
       "id": "FR-07",
-      "statement": "Employees find colleagues through the firm directory",
+      "statement": "Employees find colleagues through the Org directory",
       "source": "team-confirmed"
     },
     {
@@ -321,13 +321,13 @@
       "id": "NFR-NET-01",
       "category": "networking",
       "statement": "Outbound traffic only to approved destinations",
-      "target": "Egress allowlist: APNs, FCM, corporate IdP",
+      "target": "Egress allowlist: APNs, FCM, Org IdP",
       "source": "team-confirmed"
     },
     {
       "id": "NFR-DAT-01",
       "category": "data",
-      "statement": "Message content stays in the firm's AWS accounts, except for exports to the approved surveillance platform",
+      "statement": "Message content stays in the organization's AWS accounts, except for exports to the approved surveillance platform",
       "target": "Exports only over private connectivity; no other third party receives message content",
       "source": "team-confirmed"
     },
@@ -348,7 +348,7 @@
         "NFR-CMP-01"
       ],
       "summary": "End-to-end encryption means the servers cannot read messages, yet every business communication must be captured and retained.",
-      "proposed_resolution": "Capture at the endpoint: a firm-managed client build journals each sent and received message, encrypted to the archive's public key, into an isolated compliance account. Plaintext exists only on devices and inside the archive's controlled decryption step."
+      "proposed_resolution": "Capture at the endpoint: an Org-managed client build journals each sent and received message, encrypted to the archive's public key, into an isolated compliance account. Plaintext exists only on devices and inside the archive's controlled decryption step."
     },
     {
       "id": "CON-02",
@@ -366,7 +366,7 @@
         "NFR-DAT-01"
       ],
       "summary": "Upstream contact discovery and secure value recovery depend on Intel SGX enclaves, which AWS does not offer.",
-      "proposed_resolution": "Replace contact discovery with the firm directory (the user group is closed and the directory is known) and disable PIN-based recovery; managed devices are re-provisioned instead."
+      "proposed_resolution": "Replace contact discovery with the Org directory (the user group is closed and the directory is known) and disable PIN-based recovery; managed devices are re-provisioned instead."
     },
     {
       "id": "CON-04",
@@ -393,7 +393,7 @@
     },
     {
       "id": "Q-03",
-      "question": "Is the firm prepared to maintain modified forks of the AGPL-licensed server components and offer their source to users?",
+      "question": "Is the organization prepared to maintain modified forks of the AGPL-licensed server components and offer their source to users?",
       "owner": "Legal / Engineering",
       "blocking": false
     }

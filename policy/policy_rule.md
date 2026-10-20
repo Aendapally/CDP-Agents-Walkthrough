@@ -1,8 +1,8 @@
 # Infrastructure Policy Rules
 
-## Company policy
+## Org policy
 
-Company-mandated rules distilled from the company policy document. They take precedence over everything else.
+Organization-mandated rules distilled from the organization's policy document. They take precedence over everything else.
 
 | ID | Policy |
 |---|---|
@@ -52,7 +52,7 @@ Company-mandated rules distilled from the company policy document. They take pre
 | DPE-04 | Production data must not be accessible from non-production CSP environments. |
 | DPE-05 | CSP data stores containing Internal, Limited, or Restricted data must not be accessible over the public internet without authentication and authorization. |
 | DPE-06 | Only CGC-approved regions may store data. |
-| IAM-01 | CSP console access must leverage Bloomberg Single Sign On (BSSO) and PVF <GO> and/or PVFX <GO>. |
+| IAM-01 | CSP console access must leverage Org Single Sign On (BSSO) and PVF <GO> and/or PVFX <GO>. |
 | IAM-02 | Administrative access to CSP environments must be limited to PCE-authorized team members. |
 | IAM-03 | MFA is required for administrative access and for direct human access to the CSP control plane and related assets. |
 | IAM-04 | Static identities are prohibited for interactive use. |
@@ -61,7 +61,7 @@ Company-mandated rules distilled from the company policy document. They take pre
 | IAM-07 | CSP Services must integrate with CSP-native IAM and key management solutions. |
 | IAM-08 | Programmatic access keys must be encrypted at rest and rotated at a maximum cadence of 90 days. |
 | INIT-VM-01 | Virtual machine images must be rotated every 90 days (enforced by INIT; not explicitly required by POLY<GO>). |
-| LOGP-01 | Logs must be forwarded to Bloomberg's centralized log management solution. |
+| LOGP-01 | Logs must be forwarded to the organization's centralized log management solution. |
 | LOGP-02 | Only the logging subsystem may write or modify log files. |
 | LOGP-03 | Only authorized administrators may access logs for troubleshooting. |
 | LOGP-04 | All other users must not have direct access to log files. |
@@ -115,7 +115,7 @@ Regions approved for running workloads and storing data.
 
 ## Approved services
 
-The approved AWS service catalog. Company rules above override it.
+The approved AWS service catalog. Organization rules above override it.
 
 | ID | Service |
 |---|---|
@@ -293,7 +293,7 @@ AWS decision-guide criteria for choosing between approved services.
 | `guidance:analytics:object-storage-for-data-lakes` | Object storage for data lakes | Optimized for providing a data lake foundation with virtually unlimited scalability and high durability. |
 | `guidance:analytics:real-time-processing` | Real-time processing | Optimized for rapid and continuous data intake and aggregation, including IT infrastructure log data, application logs, social media, market data feeds, and web clickstream data. |
 | `guidance:analytics:real-time-streaming-data-delivery` | Real-time streaming data delivery | Optimized for delivering real-time streaming data to destinations such as Amazon S3, Amazon Redshift, OpenSearch Service, Splunk, Apache Iceberg Tables, and any custom HTTP endpoint or HTTP endpoints owned by supported third-party service providers. |
-| `guidance:analytics:secure-data-clean-rooms` | Secure data clean rooms | Optimized for collaborating with other companies without sharing raw underlying data. |
+| `guidance:analytics:secure-data-clean-rooms` | Secure data clean rooms | Optimized for collaborating with other organizations without sharing raw underlying data. |
 | `guidance:analytics:unified-access-to-data-lakes-and-data-warehouses` | Unified access to data lakes and data warehouses | Built on a lakehouse architecture to optimize for unifying data access across Amazon S3 data lakes, Amazon Redshift data warehouses, operational databases, and third-party and federated data sources. |
 | `guidance:analytics:unified-analytics-and-ai` | Unified analytics and AI | Optimized for using a single development environment, Amazon SageMaker Unified Studio, to access data, analytics, and AI capabilities. |
 | `guidance:analytics:workflow-orchestration` | Workflow orchestration | Optimized for creating, scheduling, and monitoring data workflows using Apache Airflow to coordinate analytics processes and ETL jobs. |

@@ -44,7 +44,7 @@ diagram:
           label: Releases, source maps, debug files
 
     - id: idp
-      name: Corporate IdP (SAML)
+      name: Org IdP (SAML)
       type: aws.security.SingleSignOn
       relates:
         - to: web
