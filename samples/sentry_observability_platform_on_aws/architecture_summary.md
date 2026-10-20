@@ -4,7 +4,7 @@
 
 ## Overview
 
-An engineering organisation with 3,000 engineers and 2,500 projects wants Sentry for errors, tracing, replays and profiling. The telemetry carries customer data and source context, so it must stay in the firm's own AWS accounts and in EU regions. Sentry's self-hosted package is a single-host Docker Compose stack of 53 services, and upstream describes it as suited to "low-volume deployments and proofs-of-concept". This design turns that topology into a production platform that absorbs 25,000 events per second during incident storms without losing accepted events.
+An engineering organisation with 3,000 engineers and 2,500 projects wants Sentry for errors, tracing, replays and profiling. The telemetry carries customer data and source context, so it must stay in the organization's own AWS accounts and in EU regions. Sentry's self-hosted package is a single-host Docker Compose stack of 53 services, and upstream describes it as suited to "low-volume deployments and proofs-of-concept". This design turns that topology into a production platform that absorbs 25,000 events per second during incident storms without losing accepted events.
 
 The design follows the stack's own data path: Relay authenticates and scrubs events at the edge, Kafka buffers everything, and consumers fan the data out to ClickHouse for search, S3 for raw payloads and files, and PostgreSQL for issue metadata.
 
@@ -12,7 +12,7 @@ The design follows the stack's own data path: Relay authenticates and scrubs eve
 
 - 5,000 events per second sustained, 25,000 per second for up to 30 minutes, and about 2 TB per month of attachments, replays and profiles.
 - One EU region in production; backups are copied to a second EU region.
-- Single-organisation install (`SENTRY_SINGLE_ORGANIZATION`), with teams mapped from the corporate IdP.
+- Single-organisation install (`SENTRY_SINGLE_ORGANIZATION`), with teams mapped from the Org IdP.
 - SaaS-only Sentry features and multi-region active-active operation are out of scope.
 
 ## Architecture at a glance
@@ -33,13 +33,13 @@ The design follows the stack's own data path: Relay authenticates and scrubs eve
 | D1 | Run the services on Amazon EKS, with Karpenter for nodes and KEDA scaling consumers on Kafka lag | NFR-SCL-01, NFR-OPS-01 | SIG-01 | ECS on Fargate handles the stateless services well, but ClickHouse needs StatefulSets and the operator. One platform is simpler to run. |
 | D2 | Two ingest paths: a public ALB with AWS WAF for browser and mobile SDKs, and a PrivateLink endpoint service for internal producers | FR-06, NFR-NET-01 | CON-02 | Route all traffic over the internet (rejected by policy) |
 | D3 | Relay as the only writer to Kafka, enforcing DSN auth, quotas and PII scrubbing before data is stored | NFR-SEC-02, NFR-SCL-01 | Relay component; SIG-07 | Scrubbing after storage would mean PII lands on disk first |
-| D4 | Amazon MSK provisioned across three AZs: replication factor 3, min in-sync replicas 2, producer acks=all, message size raised to match Sentry's 50 MB setting | NFR-DUR-01, NFR-AVL-01 | SIG-02, CON-03 | Self-managed Kafka on EKS (more to operate, and firm policy prefers managed) |
-| D5 | Self-managed ClickHouse on EKS with the Altinity operator: shards with two replicas across AZs, three Keeper nodes, data older than 7 days moved to S3, TTL-based retention | NFR-PRF-02, NFR-RET-01, NFR-CST-01 | SIG-03, CON-01 | Hosted ClickHouse service (telemetry would leave the firm's accounts); EC2 without an operator (more manual work) |
+| D4 | Amazon MSK provisioned across three AZs: replication factor 3, min in-sync replicas 2, producer acks=all, message size raised to match Sentry's 50 MB setting | NFR-DUR-01, NFR-AVL-01 | SIG-02, CON-03 | Self-managed Kafka on EKS (more to operate, and Org policy prefers managed) |
+| D5 | Self-managed ClickHouse on EKS with the Altinity operator: shards with two replicas across AZs, three Keeper nodes, data older than 7 days moved to S3, TTL-based retention | NFR-PRF-02, NFR-RET-01, NFR-CST-01 | SIG-03, CON-01 | Hosted ClickHouse service (telemetry would leave the organization's accounts); EC2 without an operator (more manual work) |
 | D6 | Aurora PostgreSQL (Multi-AZ, Graviton) behind RDS Proxy instead of PgBouncer | NFR-AVL-01, NFR-DR-01 | SIG-04 | Self-managed PostgreSQL on EKS |
 | D7 | Raw event payloads (nodestore) and all files (attachments, replays, profiles, debug files) in S3, with lifecycle expiry at 90 and 30 days | NFR-RET-01, NFR-CST-01 | SIG-05, SIG-06, SIG-09 | Nodestore in PostgreSQL, which upstream moved away from because it did not scale |
 | D8 | ElastiCache for Redis OSS (Multi-AZ) for quotas, rate limits, buffers and digests; ElastiCache for Memcached for the Django cache | NFR-PRF-01, NFR-AVL-01 | SIG-07, SIG-08 | A single Redis for everything, which mixes cache evictions with quota state |
 | D9 | The Kafka-backed taskbroker and task workers handle background work, with no separate message broker | NFR-SCL-01 | SIG-10 | Celery with RabbitMQ (no longer the upstream path) |
-| D10 | SAML SSO with the corporate IdP; email through Amazon SES; Slack, PagerDuty and Jira reached only through the Network Firewall allowlist | FR-02, FR-05, NFR-SEC-03 | SIG-12, SIG-14 | Local accounts and open egress |
+| D10 | SAML SSO with the Org IdP; email through Amazon SES; Slack, PagerDuty and Jira reached only through the Network Firewall allowlist | FR-02, FR-05, NFR-SEC-03 | SIG-12, SIG-14 | Local accounts and open egress |
 | D11 | All stores encrypted with customer-managed KMS keys; one production region; backups copied only to another EU region | NFR-SEC-01, NFR-DR-01 | Scenario | Cross-region replicas of live data (more cost, with no matching RTO need) |
 | D12 | Platform self-monitoring: CloudWatch Container Insights, MSK consumer-lag alarms, StatsD metrics through the CloudWatch agent | NFR-OPS-01 | SIG-13 | Monitoring Sentry with Sentry (it fails at the same moment) |
 
@@ -64,7 +64,7 @@ The design follows the stack's own data path: Relay authenticates and scrubs eve
 
 | ID | Request | Why | Compensating controls | Approvers |
 |---|---|---|---|---|
-| EXC-01 | Operate self-managed ClickHouse | No managed option inside the firm's accounts (CON-01) | Altinity operator, replicas across AZs, nightly backups to S3 with cross-region copy, restore tested quarterly, on-call runbooks | Platform engineering lead, CCoE |
+| EXC-01 | Operate self-managed ClickHouse | No managed option inside the organization's accounts (CON-01) | Altinity operator, replicas across AZs, nightly backups to S3 with cross-region copy, restore tested quarterly, on-call runbooks | Platform engineering lead, CCoE |
 | EXC-02 | Internet-facing ingest endpoint for browser and mobile SDKs | Client-side telemetry cannot use PrivateLink (CON-02) | Only Relay is exposed; WAF rate limits and bot control; per-project DSN keys with quotas; PII scrubbed before storage | CISO |
 
 The FSL-1.1 licence permits internal use. Legal sign-off is tracked as NFR-CMP-01 rather than as an exception.

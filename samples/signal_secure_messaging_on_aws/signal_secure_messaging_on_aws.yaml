@@ -10,7 +10,7 @@ diagram:
       ranksep: 1.3
       fontsize: 24
   resources:
-    # People and services outside the firm's AWS accounts
+    # People and services outside the organization's AWS accounts
     - id: employees
       name: Employee devices (MDM-managed)
       type: aws.general.Users
@@ -31,7 +31,7 @@ diagram:
           label: Compliance journal (encrypted)
 
     - id: idp
-      name: Corporate IdP (SSO + SCIM)
+      name: Org IdP (SSO + SCIM)
       type: aws.security.SingleSignOn
       relates:
         - to: registration
@@ -143,7 +143,7 @@ diagram:
               name: Registration service (SSO-gated)
               type: k8s.compute.Deployment
             - id: directory
-              name: Firm directory service
+              name: Org directory service
               type: k8s.compute.Deployment
             - id: storage_service
               name: Storage service (groups, encrypted sync)

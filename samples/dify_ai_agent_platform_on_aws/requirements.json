@@ -128,12 +128,12 @@
     ]
   },
   "scenario": {
-    "summary": "A firm wants an internal platform where teams build chat assistants, RAG apps, workflows and agents over internal documents. All model inference must go through Amazon Bedrock in-region; every prompt, response and tool call is audited.",
+    "summary": "An organization wants an internal platform where teams build chat assistants, RAG apps, workflows and agents over internal documents. All model inference must go through Amazon Bedrock in-region; every prompt, response and tool call is audited.",
     "assumptions": [
       "5,000 employees and 800 peak concurrent sessions",
       "About 200 published apps and 40 team workspaces",
       "Knowledge bases of up to 2 million chunks in total",
-      "Access only from the corporate network; no public endpoint"
+      "Access only from the Org network; no public endpoint"
     ],
     "out_of_scope": [
       "Fine-tuning or hosting self-managed models",

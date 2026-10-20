@@ -135,7 +135,7 @@
         "id": "SIG-13",
         "signal": "Optional StatsD metrics for self-monitoring",
         "evidence": "sentry/sentry.conf.example.py: SENTRY_STATSD_ADDR",
-        "implies": "Metrics agent feeding the firm's monitoring"
+        "implies": "Metrics agent feeding the organization's monitoring"
       },
       {
         "id": "SIG-14",
@@ -152,7 +152,7 @@
     ]
   },
   "scenario": {
-    "summary": "A large engineering organisation wants to run Sentry for 2,500 projects inside its own AWS accounts, because error and performance telemetry carries customer data and source context that may not leave the firm's environment.",
+    "summary": "A large engineering organisation wants to run Sentry for 2,500 projects inside its own AWS accounts, because error and performance telemetry carries customer data and source context that may not leave the organization's environment.",
     "assumptions": [
       "3,000 engineers and 2,500 projects",
       "5,000 events per second sustained and 25,000 per second during incident storms",
@@ -187,7 +187,7 @@
     },
     {
       "id": "FR-05",
-      "statement": "Engineers sign in through the corporate IdP; teams map to IdP groups",
+      "statement": "Engineers sign in through the Org IdP; teams map to IdP groups",
       "source": "team-confirmed"
     },
     {
@@ -303,7 +303,7 @@
         "SIG-03",
         "NFR-SEC-01"
       ],
-      "summary": "ClickHouse has no AWS-managed equivalent inside the firm's accounts, and the hosted ClickHouse service would move telemetry out of them.",
+      "summary": "ClickHouse has no AWS-managed equivalent inside the organization's accounts, and the hosted ClickHouse service would move telemetry out of them.",
       "proposed_resolution": "Self-manage ClickHouse on EKS with the Altinity operator, S3 tiered storage and automated backups."
     },
     {

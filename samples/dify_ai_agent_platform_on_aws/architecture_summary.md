@@ -4,7 +4,7 @@
 
 ## Overview
 
-The firm wants one internal platform where teams build chat assistants, RAG apps, workflows and agents over internal documents. Every model call must go through Amazon Bedrock in-region, and every prompt, response and tool call is kept for audit. Dify provides the builder experience. AWS publishes a CDK deployment of Dify that is a good starting point, but it is sized for a small team and keeps convenience defaults that an enterprise cannot accept.
+The organization wants one internal platform where teams build chat assistants, RAG apps, workflows and agents over internal documents. Every model call must go through Amazon Bedrock in-region, and every prompt, response and tool call is kept for audit. Dify provides the builder experience. AWS publishes a CDK deployment of Dify that is a good starting point, but it is sized for a small team and keeps convenience defaults that an enterprise cannot accept.
 
 This design keeps the sample's shape (ECS on Fargate, Aurora with pgvector, Valkey, S3, Bedrock over VPC endpoints) and changes four things. It isolates the code sandbox from the API's credentials. It forces every outbound request through two layers of egress control. It adds a write-once audit trail. And it settles the licensing question that SSO and per-team workspaces raise.
 
@@ -12,12 +12,12 @@ This design keeps the sample's shape (ECS on Fargate, Aurora with pgvector, Valk
 
 - 5,000 employees, 800 peak concurrent sessions, about 200 published apps in 40 team workspaces.
 - Knowledge bases total up to 2 million chunks.
-- Access only from the corporate network; no public endpoint.
+- Access only from the Org network; no public endpoint.
 - Fine-tuning, self-hosted models and customer-facing apps are out of scope.
 
 ## Architecture at a glance
 
-- **Private edge:** Direct Connect or VPN from the corporate network, AWS WAF, and an internal ALB with TLS.
+- **Private edge:** Direct Connect or VPN from the Org network, AWS WAF, and an internal ALB with TLS.
 - **Application (ECS on Fargate):** web (Next.js), API with websocket streaming, Celery workers and beat, and the plugin daemon.
 - **Isolated subnet:** the DifySandbox service, with no IAM role and no direct egress.
 - **Egress control:** the Squid SSRF proxy, then AWS Network Firewall with a domain allowlist, then NAT.
@@ -47,7 +47,7 @@ This design keeps the sample's shape (ECS on Fargate, Aurora with pgvector, Valk
 
 ## How a request flows
 
-1. An employee opens the console or a published app over the corporate network. WAF and the internal ALB send UI traffic to the web service and API calls to the API service; sign-in goes through the corporate IdP.
+1. An employee opens the console or a published app over the Org network. WAF and the internal ALB send UI traffic to the web service and API calls to the API service; sign-in goes through the Org IdP.
 2. For a chat request, the API retrieves matching chunks from pgvector, calls the model in Bedrock through the VPC endpoint, and streams the answer back.
 3. HTTP tool calls leave through the SSRF proxy and Network Firewall, and only to allowlisted APIs. Code nodes run in the isolated sandbox service, which has no credentials and can reach only the proxy.
 4. Uploaded documents land in S3. Celery workers chunk them, create embeddings with Bedrock and index them in pgvector.
@@ -66,7 +66,7 @@ This design keeps the sample's shape (ECS on Fargate, Aurora with pgvector, Valk
 
 | ID | Request | Why | Compensating controls | Approvers |
 |---|---|---|---|---|
-| EXC-01 | Commercial Dify Enterprise licence | SSO and per-team workspaces (CON-01) | Vendor risk assessment; contract covers security patches and support response times; software runs in the firm's account, so no data goes to the vendor | Procurement, CISO |
+| EXC-01 | Commercial Dify Enterprise licence | SSO and per-team workspaces (CON-01) | Vendor risk assessment; contract covers security patches and support response times; software runs in the organization's account, so no data goes to the vendor | Procurement, CISO |
 | EXC-02 | Execute user-supplied code on the platform | Code nodes are central to workflows (FR-04, CON-02) | A separate task with no IAM role, an isolated subnet, egress only through the proxy, seccomp, a 15-second limit, and code nodes restricted to approved builders | CISO |
 
 ## Risks and open items

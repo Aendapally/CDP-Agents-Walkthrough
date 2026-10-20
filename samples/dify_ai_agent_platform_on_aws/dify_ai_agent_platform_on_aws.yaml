@@ -12,7 +12,7 @@ diagram:
   resources:
     # People and systems outside the platform account
     - id: employees
-      name: Employees (corporate network)
+      name: Employees (Org network)
       type: aws.general.Users
       relates:
         - to: corporate_link
@@ -26,7 +26,7 @@ diagram:
           direction: outgoing
 
     - id: idp
-      name: Corporate IdP (SAML / OIDC)
+      name: Org IdP (SAML / OIDC)
       type: aws.security.SingleSignOn
       relates:
         - to: api
