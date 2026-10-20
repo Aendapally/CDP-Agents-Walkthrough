@@ -16,7 +16,7 @@
   --z-gov:#ECE9F6; --z-gov-s:#B5ACD8;
   --z-ext:#E8EEF3; --z-ext-s:#AFBECC;
   --accent:#2541D8; --accent-soft:#DCE2FB; --on-accent:#FFFFFF;
-  --ok:#2F8F5B; --wip:#B7791F; --plan:#7A6FA8; --bad:#B4382F;
+  --ok:#2F8F5B; --wip:#B7791F; --plan:#7A6FA8;
   --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
   --sans:"IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
   --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
@@ -31,7 +31,7 @@
     --z-gov:#201E31; --z-gov-s:#4A4370;
     --z-ext:#18212A; --z-ext-s:#394959;
     --accent:#8095FF; --accent-soft:#242C55; --on-accent:#0E1330;
-    --ok:#5BC48A; --wip:#E0A84A; --plan:#A79CDB; --bad:#EE8A80;
+    --ok:#5BC48A; --wip:#E0A84A; --plan:#A79CDB;
   }
 }
 :root[data-theme="dark"]{
@@ -43,7 +43,7 @@
   --z-gov:#201E31; --z-gov-s:#4A4370;
   --z-ext:#18212A; --z-ext-s:#394959;
   --accent:#8095FF; --accent-soft:#242C55; --on-accent:#0E1330;
-  --ok:#5BC48A; --wip:#E0A84A; --plan:#A79CDB; --bad:#EE8A80;
+  --ok:#5BC48A; --wip:#E0A84A; --plan:#A79CDB;
 }
 html,body{height:100%}
 [hidden]{display:none!important}
@@ -172,19 +172,13 @@ a.pol{font:12px var(--mono);color:var(--accent);background:var(--accent-soft);bo
 a.pol:hover{text-decoration:underline}
 .p-tools{display:flex;gap:12px;align-items:center;padding:10px 18px 0;flex-wrap:wrap}
 .p-tools input[type=search]{flex:1 1 260px;min-width:0;font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
-.p-tools label{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}
 .p-row{display:grid;grid-template-columns:minmax(140px,230px) minmax(0,1fr);gap:4px 16px;padding:10px 6px;border-bottom:1px solid var(--line);border-radius:6px}
 .p-row.flash{animation:pflash 1.8s ease}
 @keyframes pflash{0%,45%{background:var(--accent-soft)}100%{background:transparent}}
 .p-id{font:12.5px var(--mono);overflow-wrap:anywhere}
 .p-text{font-size:13.5px;min-width:0}
-.p-text q{display:block;margin-top:4px;color:var(--muted);font-size:12.5px;font-style:italic}
-.p-meta{grid-column:2;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
-.mod{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.04em;border:1px solid currentColor;border-radius:4px;padding:0 5px}
-.mod.must,.mod.required{color:var(--ok)} .mod.must-not,.mod.prohibited{color:var(--bad)} .mod.may-only{color:var(--wip)}
-.cite{font-size:11.5px;border:1px solid var(--z-art-s);background:var(--z-art);color:var(--ink);border-radius:999px;padding:0 8px}
 .p-empty{color:var(--muted);padding:16px 0}
-@media (max-width:700px){.p-row{grid-template-columns:1fr}.p-meta{grid-column:1}}
+@media (max-width:700px){.p-row{grid-template-columns:1fr}}
 @media (prefers-reduced-motion: reduce){.p-row.flash{animation:none}}
 @media (prefers-reduced-motion: reduce){.edge.on path{animation:none}.node,.zone,.edge,.badge{transition:none}}
 @media (max-width:900px){
@@ -378,7 +372,7 @@ const STEPS = [
          'Req Scoring checks the document after every pass (4). If the completeness score meets the threshold, the requirements move on to design. If not, the gaps go back to the team.'],
    out:[{t:'Req JSON (scored)',a:'req'}], nodes:['z-req','parser','reqjson','scoring',...LLM], edges:['e3','e4','e5','e5b']},
   {n:'5 · 5.1', area:'Requirements loop', title:'Close the gaps with the team',
-   body:['When the score is below the threshold, the Requirements Analyzer sends the gaps back to the ChatBot (5). The ChatBot asks the app developer targeted clarifying questions based on organisation policy (5.1).',
+   body:['When the score is below the threshold, the Requirements Analyzer sends the gaps back to the ChatBot (5). The ChatBot asks the app developer targeted clarifying questions to fill them (5.1).',
          'The answers go back to the Requirement Parser and steps 2–4 run again. The loop repeats until the requirements reach the completeness threshold.'],
    nodes:['chatbot','dev','z-req','parser','reqjson','scoring'], edges:['e2','e21','e1b']},
   {n:'6', area:'A2A hand-off', title:'Hand off to the architecture team',
@@ -488,12 +482,7 @@ function renderSample(key){
   [...document.getElementById('vTabs').children].forEach(b=>b.setAttribute('aria-selected', b.dataset.k===key));
   [...document.getElementById('vSets').children].forEach((b,i)=>b.setAttribute('aria-pressed', i===vSet));
   const body = document.getElementById('vBody');
-  if (key==='req'){
-    let html = hl(set.req,'json');
-    if (POLICY) html = html.replace(/<span class="s">"([^"<]+)"<\/span>/g, (m,id) => POLICY_IDS.has(id) ? `<span class="s">"<a href="#" class="pol" data-policy="${id}">${id}</a>"</span>` : m);
-    body.innerHTML = `<pre class="code">${html}</pre>`;
-    if (POLICY) bindPolicyLinks(body);
-  }
+  if (key==='req') body.innerHTML = `<pre class="code">${hl(set.req,'json')}</pre>`;
   else if (key==='sum'){
     body.innerHTML = `<div class="doc">${set.summaryHtml}</div>`;
     body.querySelectorAll('[data-tab]').forEach(a=>a.addEventListener('click',e=>{ e.preventDefault(); renderSample(a.dataset.tab); }));
@@ -529,42 +518,28 @@ document.getElementById('samplesBtn').addEventListener('click',()=>openSample(AR
 // ---- company policy list (only in builds that include the policy) ----
 const POLICY = (() => { const n = document.getElementById('policy-data'); try { return n ? JSON.parse(n.textContent) : null; } catch(_) { return null; } })();
 const policyViewer = document.getElementById('policyViewer');
-const POLICY_IDS = new Set(POLICY ? ['company','regions','services','guidance'].flatMap(k=>POLICY[k].map(r=>r.id)) : []);
 const POLICY_STEPS = ['9.1','11','11.1','19–20'];
 const P_NOTES = {
-  company: 'Company-mandated rules distilled from the company policy document, each with its source page. They take precedence over everything else.',
+  company: 'Company-mandated rules distilled from the company policy document. They take precedence over everything else.',
   regions: 'Regions approved for running workloads and storing data.',
   services: 'The approved AWS service catalog. Company rules above override it.',
   guidance: 'AWS decision-guide criteria for choosing between approved services.',
 };
 let pTab = 'company';
 function policyTabOf(id){ return id.startsWith('svc:') ? 'services' : id.startsWith('guidance:') ? 'guidance' : POLICY.regions.some(r=>r.id===id) ? 'regions' : 'company'; }
-function polLink(id){ return `<a href="#" class="pol" data-policy="${esc(id)}">${esc(id)}</a>`; }
+// Each rule is just its ID and its text (guidance also has a topic)
 function policyRow(r){
-  let text, meta = [];
-  if (pTab==='company'){
-    text = esc(r.statement) + (r.quote && r.quote.trim() !== r.statement.trim() ? `<q>${esc(r.quote)}</q>` : '');
-    meta = [`<span class="mod ${esc(r.modality)}">${esc(r.modality)}</span>`, `<span>${esc(r.knob)}</span>`, `<span>${esc(r.kind)}</span>`, r.page ? `<span>source p.${esc(String(r.page))}</span>` : ''];
-  } else if (pTab==='regions'){
-    text = esc(r.name); meta = ['<span>approved region</span>'];
-  } else if (pTab==='services'){
-    text = `${esc(r.service)} · ${esc(r.status)}`; meta = [`<span>${esc(r.category)}</span>`, ...r.guidance.map(polLink)];
-  } else {
-    text = `<strong>${esc(r.topic)}</strong>${r.when ? ' · ' + esc(r.when) : ''}`; meta = [`<span>${esc(r.category)}</span>`, ...r.services.map(x=>`<span>${esc(x)}</span>`)];
-  }
-  const cites = (POLICY.citedBy[r.id] || []).map(c=>`<button class="cite" data-set="${c.set}" title="Open the ${esc(c.sample)} summary">${esc(c.sample)} · ${esc(c.ref)}</button>`);
-  return `<div class="p-row" data-id="${esc(r.id)}"><div class="p-id">${esc(r.id)}</div><div class="p-text">${text}</div><div class="p-meta">${meta.join('')}${cites.join('')}</div></div>`;
+  const text = (r.title ? `<strong>${esc(r.title)}</strong> · ` : '') + esc(r.text);
+  return `<div class="p-row" data-id="${esc(r.id)}"><div class="p-id">${esc(r.id)}</div><div class="p-text">${text}</div></div>`;
 }
 function renderPolicy(focusId){
   [...document.getElementById('pTabs').children].forEach(b=>b.setAttribute('aria-selected', b.dataset.k===pTab));
   document.getElementById('pNote').textContent = P_NOTES[pTab];
   const q = document.getElementById('pSearch').value.trim().toLowerCase();
-  const citedOnly = document.getElementById('pCited').checked;
-  const rows = POLICY[pTab].filter(r => (!q || JSON.stringify(r).toLowerCase().includes(q)) && (!citedOnly || POLICY.citedBy[r.id]));
+  const rows = POLICY[pTab].filter(r => !q || JSON.stringify(r).toLowerCase().includes(q));
   const list = document.getElementById('pList');
   list.innerHTML = rows.map(policyRow).join('') || '<p class="p-empty">No policies match the filter.</p>';
   bindPolicyLinks(list);
-  list.querySelectorAll('.cite').forEach(b=>b.addEventListener('click',()=>{ policyViewer.close(); vSet = +b.dataset.set; openSample('sum'); }));
   const row = focusId && list.querySelector(`.p-row[data-id="${CSS.escape(focusId)}"]`);
   if (row){ row.scrollIntoView({block:'center'}); row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); }
   else document.querySelector('#policyViewer .v-body').scrollTop = 0;
@@ -572,7 +547,7 @@ function renderPolicy(focusId){
 function openPolicy(id){
   if (!POLICY) return;
   stopPlay();
-  if (id){ pTab = policyTabOf(id); document.getElementById('pSearch').value = ''; document.getElementById('pCited').checked = false; }
+  if (id){ pTab = policyTabOf(id); document.getElementById('pSearch').value = ''; }
   if (!policyViewer.open){ try { policyViewer.showModal(); } catch(_) { policyViewer.setAttribute('open',''); } }
   renderPolicy(id);
 }
@@ -584,7 +559,6 @@ if (POLICY){
   });
   document.getElementById('pMeta').textContent = POLICY.meta.summary;
   document.getElementById('pSearch').addEventListener('input',()=>renderPolicy());
-  document.getElementById('pCited').addEventListener('change',()=>renderPolicy());
   document.getElementById('pClose').addEventListener('click',()=>policyViewer.close());
   policyViewer.addEventListener('click',e=>{ if (e.target===policyViewer) policyViewer.close(); });
   document.getElementById('policyBtn').addEventListener('click',()=>openPolicy());
