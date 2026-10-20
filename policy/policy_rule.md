@@ -36,13 +36,13 @@ Organization-mandated rules distilled from the organization's policy document. T
 | BB_AWS0206 | Only ports 80/443 may be allowed from the internet. |
 | BB_AWS0211 | S3 bucket policies must block DELETE actions from all principals. |
 | BB_AWS0213 | S3 bucket policies must block GET actions from all principals. |
-| COMP-01 | CSP compute resources must only be deployed using PCE-hardened (golden) images. |
-| COMP-02 | Workloads must leverage PCE-approved deployment pipelines and automation. |
-| COMP-03 | Workloads must leverage CTO-approved public cloud patterns where suitable patterns exist. |
-| COMP-04 | Development activity must occur exclusively in PCE-managed development environments. |
-| COMP-05 | Production workloads must operate exclusively in PCE-managed production environments. |
-| COMP-06 | Production workloads must comply with CTO-approved disaster recovery patterns, including multi-region where appropriate. |
-| COMP-07 | CSP environments must be scanned for vulnerabilities and remediated in accordance with the Vulnerability Management Standard. |
+| ORG-01 | CSP compute resources must only be deployed using PCE-hardened (golden) images. |
+| ORG-02 | Workloads must leverage PCE-approved deployment pipelines and automation. |
+| ORG-03 | Workloads must leverage CTO-approved public cloud patterns where suitable patterns exist. |
+| ORG-04 | Development activity must occur exclusively in PCE-managed development environments. |
+| ORG-05 | Production workloads must operate exclusively in PCE-managed production environments. |
+| ORG-06 | Production workloads must comply with CTO-approved disaster recovery patterns, including multi-region where appropriate. |
+| ORG-07 | CSP environments must be scanned for vulnerabilities and remediated in accordance with the Vulnerability Management Standard. |
 | CSPLOG-01 | CSP environments must integrate with CSP-native logging solutions (e.g., AWS Config, CloudTrail), unless explicitly approved by CTO. |
 | CSPLOG-02 | Approved CSP Services must log activity, including configuration changes. |
 | CSPLOG-03 | Logging must comply with the Logging Procedure. |
