@@ -16,7 +16,7 @@
   --z-gov:#ECE9F6; --z-gov-s:#B5ACD8;
   --z-ext:#E8EEF3; --z-ext-s:#AFBECC;
   --accent:#2541D8; --accent-soft:#DCE2FB; --on-accent:#FFFFFF;
-  --ok:#2F8F5B; --wip:#B7791F; --plan:#7A6FA8;
+  --ok:#2F8F5B; --wip:#B7791F; --plan:#7A6FA8; --bad:#B4382F;
   --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
   --sans:"IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
   --mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
@@ -31,7 +31,7 @@
     --z-gov:#201E31; --z-gov-s:#4A4370;
     --z-ext:#18212A; --z-ext-s:#394959;
     --accent:#8095FF; --accent-soft:#242C55; --on-accent:#0E1330;
-    --ok:#5BC48A; --wip:#E0A84A; --plan:#A79CDB;
+    --ok:#5BC48A; --wip:#E0A84A; --plan:#A79CDB; --bad:#EE8A80;
   }
 }
 :root[data-theme="dark"]{
@@ -43,7 +43,7 @@
   --z-gov:#201E31; --z-gov-s:#4A4370;
   --z-ext:#18212A; --z-ext-s:#394959;
   --accent:#8095FF; --accent-soft:#242C55; --on-accent:#0E1330;
-  --ok:#5BC48A; --wip:#E0A84A; --plan:#A79CDB;
+  --ok:#5BC48A; --wip:#E0A84A; --plan:#A79CDB; --bad:#EE8A80;
 }
 html,body{height:100%}
 [hidden]{display:none!important}
@@ -151,7 +151,8 @@ dialog.viewer::backdrop{background:rgba(10,14,12,.55)}
 .v-body{flex:1;min-height:0;overflow:auto;padding:12px 18px 18px}
 .code{font:12.5px/1.55 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:0;white-space:pre;tab-size:2;min-width:max-content}
 .code .k{color:var(--accent)} .code .s{color:var(--ok)} .code .n{color:var(--wip)} .code .c{color:var(--muted);font-style:italic}
-.doc{max-width:78ch;display:flex;flex-direction:column;gap:12px}
+.doc{display:flex;flex-direction:column;gap:12px}
+.doc>:not(.tablewrap){max-width:78ch}
 .doc h2,.doc h3{font-family:var(--display);font-size:17px;margin:10px 0 0}
 .doc a{color:var(--accent)}
 .doc ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
@@ -166,6 +167,25 @@ dialog.viewer::backdrop{background:rgba(10,14,12,.55)}
 .imgwrap img{display:block;width:100%;max-width:100%}
 .imgwrap.zoomed{cursor:zoom-out}
 .imgwrap.zoomed img{width:auto;max-width:none}
+/* company policy list */
+a.pol{font:12px var(--mono);color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:0 4px;text-decoration:none;overflow-wrap:break-word}
+a.pol:hover{text-decoration:underline}
+.p-tools{display:flex;gap:12px;align-items:center;padding:10px 18px 0;flex-wrap:wrap}
+.p-tools input[type=search]{flex:1 1 260px;min-width:0;font:inherit;font-size:13px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.p-tools label{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}
+.p-row{display:grid;grid-template-columns:minmax(140px,230px) minmax(0,1fr);gap:4px 16px;padding:10px 6px;border-bottom:1px solid var(--line);border-radius:6px}
+.p-row.flash{animation:pflash 1.8s ease}
+@keyframes pflash{0%,45%{background:var(--accent-soft)}100%{background:transparent}}
+.p-id{font:12.5px var(--mono);overflow-wrap:anywhere}
+.p-text{font-size:13.5px;min-width:0}
+.p-text q{display:block;margin-top:4px;color:var(--muted);font-size:12.5px;font-style:italic}
+.p-meta{grid-column:2;display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.mod{font:600 10.5px var(--mono);text-transform:uppercase;letter-spacing:.04em;border:1px solid currentColor;border-radius:4px;padding:0 5px}
+.mod.must,.mod.required{color:var(--ok)} .mod.must-not,.mod.prohibited{color:var(--bad)} .mod.may-only{color:var(--wip)}
+.cite{font-size:11.5px;border:1px solid var(--z-art-s);background:var(--z-art);color:var(--ink);border-radius:999px;padding:0 8px}
+.p-empty{color:var(--muted);padding:16px 0}
+@media (max-width:700px){.p-row{grid-template-columns:1fr}.p-meta{grid-column:1}}
+@media (prefers-reduced-motion: reduce){.p-row.flash{animation:none}}
 @media (prefers-reduced-motion: reduce){.edge.on path{animation:none}.node,.zone,.edge,.badge{transition:none}}
 @media (max-width:900px){
   .app{height:auto;min-height:100%}
@@ -347,7 +367,7 @@ const ORG = ['z-org','org-pol','org-iac','org-pat','org-sec'];
 const STEPS = [
   {n:'Overview', area:'End-to-end flow', title:'From application code to provisioned, policy-compliant architecture',
    body:['CDP-Agents moves architecture decisions to design time. It reads an application, works out the non-functional requirements with the team, designs the architecture with a panel of specialist agents, and carries it through review, governance and provisioning.',
-         'Every requirement and design decision is stored as a versioned schema document, so each choice can be traced back to the requirement, policy or paved path behind it.'],
+         'Every architecture decision is grounded in the organization’s policies and standards, and traces back to the functional and non-functional requirements it satisfies. Requirements and decisions are stored as versioned schema documents, so each choice can be audited.'],
    nodes:[], edges:[]},
   {n:'1', area:'CDP ChatBot', title:'Read the application',
    body:['The Cloud Developer Platform agent reads the application repository: source code, the manifest of non-functional requirements, and any existing infrastructure-as-code.',
@@ -372,14 +392,16 @@ const STEPS = [
    body:['Specialists reason with the LLM and read the cloud provider’s documentation and best practices through the MCP Gateway, so services are used the way the provider intends.'],
    nodes:['z-lead',...SPEC,...LLM,'z-mcp','gateway','cspmcp'], edges:['e8','e9','egw1']},
   {n:'9.1', area:'Org Standards & Policy MCP', title:'Check against organization policy',
-   body:['Before committing to a resource, region or external dependency, specialists ask the organization’s standards and policy MCP server.',
-         'Is this resource approved? Is this demographic or external access allowed? Is there a paved-path module in the IaC registry?'],
+   body:['Before committing to a resource, region or external dependency, specialists check it against the organization’s policy through the MCP Gateway.',
+         'The policy combines company standards, distilled from the governing documents with each rule tied to its source, with the approved AWS service catalog and AWS selection guidance. Company rules always take precedence.',
+         'Is this resource approved? Is this geographic or external access allowed? Is there a paved-path module in the IaC registry?'],
    nodes:[...SPEC,'z-mcp','gateway','orgmcp',...ORG], edges:['e91','egw2','eorg']},
   {n:'10', area:'Architecture Designer', title:'Converge on one design',
    body:['The reconciled proposals from the specialist agents flow into the Architecture Designer, which assembles them into one end-to-end architecture.'],
    nodes:['z-lead',...SPEC,'designer'], edges:['e10']},
   {n:'11', area:'Architecture Designer · MCP Gateway', title:'Check the whole design against policy',
    body:['The Architecture Designer reviews the entire architecture, with the LLM’s help, against the organization’s policies and standards. It reaches them through the MCP Gateway and the org standards and policy MCP server.',
+         'Every service must trace back to the functional requirement it serves, the non-functional requirements that size it, and the policy rules that allow it. Prohibited services are never chosen, and choices between approved services cite the selection guidance.',
          'If everything is aligned, the design moves on to publishing. If anything violates a policy or standard, the user is asked about an exception first.'],
    nodes:['z-lead','designer',...LLM,'z-mcp','gateway','orgmcp',...ORG], edges:['e11','egw2','eorg','e8'], quiet:['e8']},
   {n:'11.1', area:'Exception request', title:'Ask whether to file for an exception',
@@ -388,7 +410,7 @@ const STEPS = [
    nodes:['z-lead','designer','chatbot','dev'], edges:['e101','e21'], quiet:['e21']},
   {n:'12', area:'Publish', title:'Push the design and share it',
    body:['Once the design is aligned with policy, with any exception requests attached, the designer pushes the Architecture Summary to the source code repository, versioned with the other artifacts.',
-         'The ChatBot shares it with the users. Each decision in the summary traces back to the requirement, policy or paved path behind it.'],
+         'The ChatBot shares it with the users. Each decision in the summary lists the requirements it satisfies and the policy rules it is grounded in.'],
    out:[{t:'Architecture Summary',a:'sum'}], nodes:['z-lead','designer','z-art','a-sum','chatbot','dev'], edges:['e12','e101','e21'], quiet:['e101','e21']},
   {n:'13–16', area:'Architecture YAML Generator', title:'Generate architecture-as-code',
    body:['The YAML Generator gives the LLM the Architecture Summary plus example datasets and asks it to generate diagrams-as-code YAML.',
@@ -450,7 +472,7 @@ try { const saved = +localStorage.getItem('cdp-sample-set'); if (SAMPLE_SETS[sav
 function noteFor(set, key){
   const r = set.stats;
   if (key==='req') return `${r.signals} signals detected in ${set.source}; ${r.frs} functional and ${r.nfrs} non-functional requirements; ${r.conflicts} policy conflicts. Completeness ${r.completeness} against a ${r.threshold} threshold.`;
-  if (key==='sum') return `${r.decisions} key decisions, each traced to requirement IDs (FR, NFR) and detected signals (SIG), plus the exceptions requested from governance.`;
+  if (key==='sum') return `${r.decisions} key decisions, each with the requirements it satisfies (FR, NFR), the policy rules it is grounded in, and the signals behind it, plus the exceptions requested from governance.`;
   if (key==='yaml') return `Diagrams-as-code: ${r.nodes} components in ${r.clusters} clusters. Passes the repo's YAML schema.`;
   return `Rendered from the YAML with the repo's diagram tool. Click the diagram to zoom.`;
 }
@@ -466,10 +488,16 @@ function renderSample(key){
   [...document.getElementById('vTabs').children].forEach(b=>b.setAttribute('aria-selected', b.dataset.k===key));
   [...document.getElementById('vSets').children].forEach((b,i)=>b.setAttribute('aria-pressed', i===vSet));
   const body = document.getElementById('vBody');
-  if (key==='req') body.innerHTML = `<pre class="code">${hl(set.req,'json')}</pre>`;
+  if (key==='req'){
+    let html = hl(set.req,'json');
+    if (POLICY) html = html.replace(/<span class="s">"([^"<]+)"<\/span>/g, (m,id) => POLICY_IDS.has(id) ? `<span class="s">"<a href="#" class="pol" data-policy="${id}">${id}</a>"</span>` : m);
+    body.innerHTML = `<pre class="code">${html}</pre>`;
+    if (POLICY) bindPolicyLinks(body);
+  }
   else if (key==='sum'){
     body.innerHTML = `<div class="doc">${set.summaryHtml}</div>`;
     body.querySelectorAll('[data-tab]').forEach(a=>a.addEventListener('click',e=>{ e.preventDefault(); renderSample(a.dataset.tab); }));
+    if (POLICY) bindPolicyLinks(body);
   }
   else if (key==='yaml') body.innerHTML = `<pre class="code">${hl(set.yaml,'yaml')}</pre>`;
   else {
@@ -497,6 +525,70 @@ SAMPLE_SETS.forEach((set,i)=>{
 document.getElementById('vClose').addEventListener('click',()=>viewer.close());
 viewer.addEventListener('click',e=>{ if (e.target===viewer) viewer.close(); });
 document.getElementById('samplesBtn').addEventListener('click',()=>openSample(ART_OF[STEPS[cur].nodes.find(id=>ART_OF[id])] || 'req'));
+
+// ---- company policy list (only in builds that include the policy) ----
+const POLICY = (() => { const n = document.getElementById('policy-data'); try { return n ? JSON.parse(n.textContent) : null; } catch(_) { return null; } })();
+const policyViewer = document.getElementById('policyViewer');
+const POLICY_IDS = new Set(POLICY ? ['company','regions','services','guidance'].flatMap(k=>POLICY[k].map(r=>r.id)) : []);
+const POLICY_STEPS = ['9.1','11','11.1','19–20'];
+const P_NOTES = {
+  company: 'Company-mandated rules distilled from the company policy document, each with its source page. They take precedence over everything else.',
+  regions: 'Regions approved for running workloads and storing data.',
+  services: 'The approved AWS service catalog. Company rules above override it.',
+  guidance: 'AWS decision-guide criteria for choosing between approved services.',
+};
+let pTab = 'company';
+function policyTabOf(id){ return id.startsWith('svc:') ? 'services' : id.startsWith('guidance:') ? 'guidance' : POLICY.regions.some(r=>r.id===id) ? 'regions' : 'company'; }
+function polLink(id){ return `<a href="#" class="pol" data-policy="${esc(id)}">${esc(id)}</a>`; }
+function policyRow(r){
+  let text, meta = [];
+  if (pTab==='company'){
+    text = esc(r.statement) + (r.quote && r.quote.trim() !== r.statement.trim() ? `<q>${esc(r.quote)}</q>` : '');
+    meta = [`<span class="mod ${esc(r.modality)}">${esc(r.modality)}</span>`, `<span>${esc(r.knob)}</span>`, `<span>${esc(r.kind)}</span>`, r.page ? `<span>source p.${esc(String(r.page))}</span>` : ''];
+  } else if (pTab==='regions'){
+    text = esc(r.name); meta = ['<span>approved region</span>'];
+  } else if (pTab==='services'){
+    text = `${esc(r.service)} · ${esc(r.status)}`; meta = [`<span>${esc(r.category)}</span>`, ...r.guidance.map(polLink)];
+  } else {
+    text = `<strong>${esc(r.topic)}</strong>${r.when ? ' · ' + esc(r.when) : ''}`; meta = [`<span>${esc(r.category)}</span>`, ...r.services.map(x=>`<span>${esc(x)}</span>`)];
+  }
+  const cites = (POLICY.citedBy[r.id] || []).map(c=>`<button class="cite" data-set="${c.set}" title="Open the ${esc(c.sample)} summary">${esc(c.sample)} · ${esc(c.ref)}</button>`);
+  return `<div class="p-row" data-id="${esc(r.id)}"><div class="p-id">${esc(r.id)}</div><div class="p-text">${text}</div><div class="p-meta">${meta.join('')}${cites.join('')}</div></div>`;
+}
+function renderPolicy(focusId){
+  [...document.getElementById('pTabs').children].forEach(b=>b.setAttribute('aria-selected', b.dataset.k===pTab));
+  document.getElementById('pNote').textContent = P_NOTES[pTab];
+  const q = document.getElementById('pSearch').value.trim().toLowerCase();
+  const citedOnly = document.getElementById('pCited').checked;
+  const rows = POLICY[pTab].filter(r => (!q || JSON.stringify(r).toLowerCase().includes(q)) && (!citedOnly || POLICY.citedBy[r.id]));
+  const list = document.getElementById('pList');
+  list.innerHTML = rows.map(policyRow).join('') || '<p class="p-empty">No policies match the filter.</p>';
+  bindPolicyLinks(list);
+  list.querySelectorAll('.cite').forEach(b=>b.addEventListener('click',()=>{ policyViewer.close(); vSet = +b.dataset.set; openSample('sum'); }));
+  const row = focusId && list.querySelector(`.p-row[data-id="${CSS.escape(focusId)}"]`);
+  if (row){ row.scrollIntoView({block:'center'}); row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); }
+  else document.querySelector('#policyViewer .v-body').scrollTop = 0;
+}
+function openPolicy(id){
+  if (!POLICY) return;
+  stopPlay();
+  if (id){ pTab = policyTabOf(id); document.getElementById('pSearch').value = ''; document.getElementById('pCited').checked = false; }
+  if (!policyViewer.open){ try { policyViewer.showModal(); } catch(_) { policyViewer.setAttribute('open',''); } }
+  renderPolicy(id);
+}
+function bindPolicyLinks(root){ root.querySelectorAll('a.pol[data-policy]').forEach(a=>a.addEventListener('click',e=>{ e.preventDefault(); openPolicy(a.dataset.policy); })); }
+if (POLICY){
+  [['company','Company policy'],['regions','Approved regions'],['services','Approved services'],['guidance','Selection guidance']].forEach(([k,label])=>{
+    const b = document.createElement('button'); b.role = 'tab'; b.dataset.k = k; b.textContent = `${label} (${POLICY[k].length})`;
+    b.addEventListener('click',()=>{ pTab = k; renderPolicy(); }); document.getElementById('pTabs').appendChild(b);
+  });
+  document.getElementById('pMeta').textContent = POLICY.meta.summary;
+  document.getElementById('pSearch').addEventListener('input',()=>renderPolicy());
+  document.getElementById('pCited').addEventListener('change',()=>renderPolicy());
+  document.getElementById('pClose').addEventListener('click',()=>policyViewer.close());
+  policyViewer.addEventListener('click',e=>{ if (e.target===policyViewer) policyViewer.close(); });
+  document.getElementById('policyBtn').addEventListener('click',()=>openPolicy());
+}
 
 const STATUS_TEXT = BUILD_STATUS ? BUILD_STATUS.labels : {};
 const NS = 'http://www.w3.org/2000/svg';
@@ -623,9 +715,11 @@ function renderPanel(s, i){
     parts.push(`<div class="meta">${meta.join('')}</div>`);
   }
   if (i===0) parts.push(`<button class="open-sample" data-art="req">Browse sample artifacts ›</button>`);
+  if (POLICY && POLICY_STEPS.includes(s.n)) parts.push(`<button class="open-sample" data-open-policy>Open the policy list ›</button>`);
   parts.push(`<p class="hint"><kbd>←</kbd> <kbd>→</kbd> or <kbd>Space</kbd> to move · <kbd>Esc</kbd> for overview · click any box to jump to its step, or an artifact to open its sample</p>`);
   panel.innerHTML = parts.join('');
   panel.querySelectorAll('[data-art]').forEach(b=>b.addEventListener('click',()=>openSample(b.dataset.art)));
+  panel.querySelectorAll('[data-open-policy]').forEach(b=>b.addEventListener('click',()=>openPolicy()));
   panel.querySelectorAll('[data-go]').forEach(b=>b.addEventListener('click',()=>{stopPlay();go(+b.dataset.go);}));
   panel.scrollTop = 0;
 }
@@ -657,7 +751,7 @@ function prev(){ go(cur-1); }
 document.getElementById('next').addEventListener('click',()=>{stopPlay();next();});
 document.getElementById('prev').addEventListener('click',()=>{stopPlay();prev();});
 document.addEventListener('keydown',e=>{
-  if (viewer.open || e.target.closest('input,textarea')) return;
+  if (viewer.open || (policyViewer && policyViewer.open) || e.target.closest('input,textarea')) return;
   if (e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){ e.preventDefault(); stopPlay(); next(); }
   else if (e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); stopPlay(); prev(); }
   else if (e.key==='Escape'||e.key==='Home'){ stopPlay(); go(0); }
