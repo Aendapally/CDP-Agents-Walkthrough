@@ -28,22 +28,24 @@ This design keeps the sample's shape (ECS on Fargate, Aurora with pgvector, Valk
 
 ## Key decisions
 
-| # | Decision | Satisfies | Grounded in | Alternatives considered |
-|---|---|---|---|---|
-| D1 | Start from AWS's Dify CDK sample and harden it rather than design from scratch | NFR-AVL-01, NFR-SCL-01 | SIG-09 | EKS: nothing here is stateful enough to justify running Kubernetes |
-| D2 | Move the sandbox out of the API task into its own Fargate service in an isolated subnet: no task role, and a security group that only reaches the SSRF proxy. Keep seccomp and the 15-second limit. | FR-04, NFR-SEC-03 | SIG-05, SIG-10, CON-02 | Keep the sample's sidecar layout, where user code shares the API's network namespace and its S3 and Bedrock permissions |
-| D3 | Run the plugin daemon as its own service with a narrow role, installing plugins only from an internal, reviewed catalogue | FR-05 | SIG-07 | Open marketplace installs |
-| D4 | Two layers of egress control: the SSRF proxy blocks internal ranges and the metadata endpoint, then Network Firewall enforces a domain allowlist | NFR-NET-01 | SIG-06 | Either layer alone |
-| D5 | Bedrock is the only model provider, reached through VPC endpoints. An SCP allows only approved model ARNs. Guardrails apply to every production app, through the provider settings where supported or a mandatory guardrail step in workflows. | NFR-SEC-01, NFR-SEC-04 | SIG-09 | External model APIs through the egress proxy (rejected by policy) |
-| D6 | Provisioned Aurora PostgreSQL (Multi-AZ, Graviton) for app and plugin metadata, plus a separate Aurora cluster with pgvector for knowledge bases | NFR-AVL-01, NFR-SCL-01 | SIG-04, SIG-09 | The sample's Aurora Serverless v2 capped at 2 ACU (too small). Amazon OpenSearch for vectors; revisit beyond about 10 million chunks or if hybrid search is needed. |
-| D7 | ElastiCache Valkey, Multi-AZ with TLS and AUTH, sized up from the sample's `cache.t4g.micro` | NFR-AVL-01 | SIG-02, SIG-09 | None |
-| D8 | On-demand Fargate for web and API; Fargate Spot only for Celery workers | NFR-AVL-01, NFR-CST-01 | SIG-09 (the sample defaults to Spot) | Spot everywhere, as in the sample |
-| D9 | License Dify Enterprise for SAML/OIDC SSO and per-team workspaces | NFR-SEC-02, FR-03 | SIG-11, SIG-12, CON-01 | Community edition behind ALB OIDC authentication: one shared workspace, no per-team isolation, and a licence breach if teams get separate workspaces |
-| D10 | Audit trail: Bedrock model invocation logging plus a scheduled export of conversations and tool calls into an S3 bucket with Object Lock (1 year), queried with Athena | NFR-CMP-01 | Scenario | CloudWatch Logs only, which gives no write-once guarantee |
-| D11 | Private access only: an internal ALB with WAF, reached over Direct Connect or VPN | NFR-SEC-02 | The sample supports an internal ALB | CloudFront with public access, the sample's default |
-| D12 | Each workspace's Bedrock provider uses its own application inference profile, tagged for cost allocation, with AWS Budgets alerts at 80% | NFR-CST-01 | Scenario | Account-level spend only |
-| D13 | Keep the agent backend's shell sandbox off at launch | NFR-SEC-03 | SIG-08, CON-03 | Enable it with the default local sandbox |
-| D14 | Aurora point-in-time recovery with cross-region snapshot copies, S3 replication, and redeployment from CDK in Region B | NFR-DR-01 | NFR-DR-01 targets | A warm standby, which an RTO of 4 hours does not need |
+"Grounded in" lists the company policy rules each decision follows, by their ID in `policy_rule.md`: company rules (for example `DPE-01`), approved services (`svc:…`) and AWS selection guidance (`guidance:…`). "Signals" lists what the code scan found.
+
+| # | Decision | Satisfies | Grounded in (policy) | Signals | Alternatives considered |
+|---|---|---|---|---|---|
+| D1 | Start from AWS's Dify CDK sample and harden it rather than design from scratch | NFR-AVL-01, NFR-SCL-01 | `COMP-02`, `COMP-03` | SIG-09 | EKS: nothing here is stateful enough to justify running Kubernetes |
+| D2 | Move the sandbox out of the API task into its own Fargate service in an isolated subnet: no task role, and a security group that only reaches the SSRF proxy. Keep seccomp and the 15-second limit. | FR-04, NFR-SEC-03 | `IAM-05`, `svc:compute:aws-fargate`, `guidance:compute:run-containers-on-aws-managed-compute` | SIG-05, SIG-10, CON-02 | Keep the sample's sidecar layout, where user code shares the API's network namespace and its S3 and Bedrock permissions |
+| D3 | Run the plugin daemon as its own service with a narrow role, installing plugins only from an internal, reviewed catalogue | FR-05 | `IAM-05`, `COMP-02` | SIG-07 | Open marketplace installs |
+| D4 | Two layers of egress control: the SSRF proxy blocks internal ranges and the metadata endpoint, then Network Firewall enforces a domain allowlist | NFR-NET-01 | `REG-03`, `svc:security-identity-and-compliance:aws-network-firewall`, `guidance:networking-and-content-delivery:network-security-and-remote-access` | SIG-06 | Either layer alone |
+| D5 | Bedrock is the only model provider, reached through VPC endpoints. An SCP allows only approved model ARNs. Guardrails apply to every production app, through the provider settings where supported or a mandatory guardrail step in workflows. | NFR-SEC-01, NFR-SEC-04 | `svc:ml-and-ai:amazon-bedrock`, `svc:networking-and-content-delivery:aws-privatelink`, `REG-04`, `DPE-03` | SIG-09 | External model APIs through the egress proxy (rejected by policy) |
+| D6 | Provisioned Aurora PostgreSQL (Multi-AZ, Graviton) for app and plugin metadata, plus a separate Aurora cluster with pgvector for knowledge bases | NFR-AVL-01, NFR-SCL-01 | `svc:databases:amazon-aurora`, `guidance:databases:relational`, `BB_AWS0204`, `DPE-01` | SIG-04, SIG-09 | The sample's Aurora Serverless v2 capped at 2 ACU (too small). Amazon OpenSearch for vectors; revisit beyond about 10 million chunks or if hybrid search is needed. |
+| D7 | ElastiCache Valkey, Multi-AZ with TLS and AUTH, sized up from the sample's `cache.t4g.micro` | NFR-AVL-01 | `svc:databases:amazon-elasticache`, `guidance:databases:in-memory`, `DPE-03` | SIG-02, SIG-09 | None |
+| D8 | On-demand Fargate for web and API; Fargate Spot only for Celery workers | NFR-AVL-01, NFR-CST-01 | `svc:compute:aws-fargate`, `guidance:compute:cost-and-savings-optimization` | SIG-09 (the sample defaults to Spot) | Spot everywhere, as in the sample |
+| D9 | License Dify Enterprise for SAML/OIDC SSO and per-team workspaces | NFR-SEC-02, FR-03 | — | SIG-11, SIG-12, CON-01 | Community edition behind ALB OIDC authentication: one shared workspace, no per-team isolation, and a licence breach if teams get separate workspaces |
+| D10 | Audit trail: Bedrock model invocation logging plus a scheduled export of conversations and tool calls into an S3 bucket with Object Lock (1 year), queried with Athena | NFR-CMP-01 | `LOGP-05`, `LOGP-01`, `svc:analytics:amazon-athena`, `svc:storage:amazon-simple-storage-service` | Scenario | CloudWatch Logs only, which gives no write-once guarantee |
+| D11 | Private access only: an internal ALB with WAF, reached over Direct Connect or VPN | NFR-SEC-02 | `REG-03`, `svc:networking-and-content-delivery:direct-connect`, `guidance:networking-and-content-delivery:global-and-hybrid-connectivity` | The sample supports an internal ALB | CloudFront with public access, the sample's default |
+| D12 | Each workspace's Bedrock provider uses its own application inference profile, tagged for cost allocation, with AWS Budgets alerts at 80% | NFR-CST-01 | `TAG-02`, `svc:ml-and-ai:amazon-bedrock` | Scenario | Account-level spend only |
+| D13 | Keep the agent backend's shell sandbox off at launch | NFR-SEC-03 | `COMP-03` | SIG-08, CON-03 | Enable it with the default local sandbox |
+| D14 | Aurora point-in-time recovery with cross-region snapshot copies, S3 replication, and redeployment from CDK in Region B | NFR-DR-01 | `COMP-06`, `REG-01`, `DPE-06`, `svc:storage:aws-backup` | NFR-DR-01 targets | A warm standby, which an RTO of 4 hours does not need |
 
 ## How a request flows
 
@@ -64,10 +66,11 @@ This design keeps the sample's shape (ECS on Fargate, Aurora with pgvector, Valk
 
 ## Policy check and exceptions requested
 
-| ID | Request | Why | Compensating controls | Approvers |
-|---|---|---|---|---|
-| EXC-01 | Commercial Dify Enterprise licence | SSO and per-team workspaces (CON-01) | Vendor risk assessment; contract covers security patches and support response times; software runs in the firm's account, so no data goes to the vendor | Procurement, CISO |
-| EXC-02 | Execute user-supplied code on the platform | Code nodes are central to workflows (FR-04, CON-02) | A separate task with no IAM role, an isolated subnet, egress only through the proxy, seccomp, a 15-second limit, and code nodes restricted to approved builders | CISO |
+| ID | Request | Policy | Why | Compensating controls | Approvers |
+|---|---|---|---|---|---|
+| EXC-01 | Commercial Dify Enterprise licence | — | SSO and per-team workspaces (CON-01) | Vendor risk assessment; contract covers security patches and support response times; software runs in the firm's account, so no data goes to the vendor | Procurement, CISO |
+| EXC-02 | Execute user-supplied code on the platform | `COMP-03` | Code nodes are central to workflows (FR-04, CON-02) | A separate task with no IAM role, an isolated subnet, egress only through the proxy, seccomp, a 15-second limit, and code nodes restricted to approved builders | CISO |
+| EXC-03 | Use Amazon SES for platform email | `REG-04` | SES is not in the approved service catalog, and accounts are restricted to approved services | Outbound email only, from one verified domain with SPF and DKIM; no inbound mail | Platform engineering lead, CGC |
 
 ## Risks and open items
 
@@ -82,3 +85,4 @@ This design keeps the sample's shape (ECS on Fargate, Aurora with pgvector, Valk
 - AWS reference: [aws-samples/dify-self-hosted-on-aws](https://github.com/aws-samples/dify-self-hosted-on-aws) at commit `a589e3e5e83b`
 - [Dify Enterprise: SSO authentication](https://enterprise-docs.dify.ai/en/3.13.x/administer/sso/introduction)
 - Amazon Bedrock: [model invocation logging](https://docs.aws.amazon.com/bedrock/latest/userguide/model-invocation-logging.html), [inference profiles](https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles.html)
+- Company policy: `policy_rule.md` from the policy engine (company paved-path document, AWS service catalog, AWS decision guides)
